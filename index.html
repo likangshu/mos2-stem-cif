@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MoS2 晶界交互编辑器 - 物理取向修正版</title>
+    <title>MoS2 晶界交互编辑器 - V23 修复增强版</title>
     <!-- 引入核心库 -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -22,7 +22,7 @@
             display: block;
         }
 
-        /* 强化滚动条，方便全图导航 */
+        /* 强化滚动条视觉，方便全图导航 */
         .main-viewport::-webkit-scrollbar { width: 14px; height: 14px; }
         .main-viewport::-webkit-scrollbar-track { background: #0f172a; }
         .main-viewport::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 7px; border: 3px solid #0f172a; }
@@ -33,7 +33,7 @@
             align-items: center; 
             justify-content: center; 
             min-width: 100%;
-            padding: 300px;
+            padding: 400px;
         }
         
         .sidebar-scroll::-webkit-scrollbar { display: none; }
@@ -42,13 +42,17 @@
         .tool-active { border-color: #3b82f6 !important; background-color: rgba(59, 130, 246, 0.2) !important; color: #60a5fa !important; }
         input[type="range"] { accent-color: #3b82f6; }
         .zoom-overlay { position: absolute; bottom: 40px; right: 40px; z-index: 50; pointer-events: none; }
+        
+        .cif-layer { pointer-events: none; }
+        @keyframes pulse-subtle { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .pulse { animation: pulse-subtle 2s infinite; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // 稳定版渲染图标组件
+        // 稳定版图标渲染组件
         const Icon = ({ name, size = 18, className = "" }) => {
             const containerRef = React.useRef(null);
             React.useEffect(() => {
@@ -64,7 +68,7 @@
             return <span ref={containerRef} className="inline-flex items-center justify-center leading-none" />;
         };
 
-        const SCALE_DEFAULT = 0.10079;
+        const SCALE_DEFAULT = 0.10079; // A/Pixel
         const ATOM_COLORS = { 
             Mo: '#fbbf24', S2: '#60a5fa', S1: '#f87171', 
             GBMask: 'rgba(239, 68, 68, 0.3)', DomainBoundary: 'rgba(59, 130, 246, 0.2)', Ghost: 'rgba(255, 255, 255, 0.5)' 
@@ -74,11 +78,11 @@
             const [image, setImage] = React.useState(null);
             const [zoomLevel, setZoomLevel] = React.useState(1.0);
             
-            // 升级至持久化 V21
-            const [manualAtoms, setManualAtoms] = React.useState(() => JSON.parse(localStorage.getItem('mos2_manual_v21')) || []);
-            const [gbMasks, setGbMasks] = React.useState(() => JSON.parse(localStorage.getItem('mos2_masks_v21')) || []);
-            const [domains, setDomains] = React.useState(() => JSON.parse(localStorage.getItem('mos2_domains_v21')) || []);
-            const [currentSeeds, setCurrentSeeds] = React.useState(() => JSON.parse(localStorage.getItem('mos2_seeds_v21')) || []);
+            // 数据版本 V23
+            const [manualAtoms, setManualAtoms] = React.useState(() => JSON.parse(localStorage.getItem('mos2_manual_v23')) || []);
+            const [gbMasks, setGbMasks] = React.useState(() => JSON.parse(localStorage.getItem('mos2_masks_v23')) || []);
+            const [domains, setDomains] = React.useState(() => JSON.parse(localStorage.getItem('mos2_domains_v23')) || []);
+            const [currentSeeds, setCurrentSeeds] = React.useState(() => JSON.parse(localStorage.getItem('mos2_seeds_v23')) || []);
             
             const [viewMode, setViewMode] = React.useState('edit');
             const [selectedType, setSelectedType] = React.useState('Mo');
@@ -94,22 +98,22 @@
             const canvasRef = React.useRef(null);
 
             React.useEffect(() => {
-                localStorage.setItem('mos2_manual_v21', JSON.stringify(manualAtoms));
-                localStorage.setItem('mos2_masks_v21', JSON.stringify(gbMasks));
-                localStorage.setItem('mos2_domains_v21', JSON.stringify(domains));
-                localStorage.setItem('mos2_seeds_v21', JSON.stringify(currentSeeds));
+                localStorage.setItem('mos2_manual_v23', JSON.stringify(manualAtoms));
+                localStorage.setItem('mos2_masks_v23', JSON.stringify(gbMasks));
+                localStorage.setItem('mos2_domains_v23', JSON.stringify(domains));
+                localStorage.setItem('mos2_seeds_v23', JSON.stringify(currentSeeds));
             }, [manualAtoms, gbMasks, domains, currentSeeds]);
 
             const showMsg = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
             
             const restoreProgress = () => {
-                const saved = localStorage.getItem('mos2_manual_v21');
+                const saved = localStorage.getItem('mos2_manual_v23');
                 if (saved) {
-                    setManualAtoms(JSON.parse(localStorage.getItem('mos2_manual_v21')) || []);
-                    setGbMasks(JSON.parse(localStorage.getItem('mos2_masks_v21')) || []);
-                    setDomains(JSON.parse(localStorage.getItem('mos2_domains_v21')) || []);
-                    setCurrentSeeds(JSON.parse(localStorage.getItem('mos2_seeds_v21')) || []);
-                    showMsg("历史数据 V21 已恢复");
+                    setManualAtoms(JSON.parse(localStorage.getItem('mos2_manual_v23')) || []);
+                    setGbMasks(JSON.parse(localStorage.getItem('mos2_masks_v23')) || []);
+                    setDomains(JSON.parse(localStorage.getItem('mos2_domains_v23')) || []);
+                    setCurrentSeeds(JSON.parse(localStorage.getItem('mos2_seeds_v23')) || []);
+                    showMsg("历史数据 V23 已恢复");
                 }
             };
 
@@ -154,52 +158,77 @@
                     const reader = new FileReader();
                     reader.onload = (event) => { 
                         const img = new Image(); 
-                        img.onload = () => { setImage(img); setZoomLevel(1.0); showMsg(`STEM 原图载入`); }; 
+                        img.onload = () => { setImage(img); setZoomLevel(1.0); showMsg(`STEM 底图已载入`); }; 
                         img.src = event.target.result; 
                     };
                     reader.readAsDataURL(file);
                 }
             };
 
-            /**
-             * 深度物理修正：基于局部单元映射的外推算法
-             * 确保外推结构的取向与种子点完全一致，绝不相反
-             */
-            const performExtrapolation = () => {
-                const mos = currentSeeds.filter(s => s.type === 'Mo');
-                const s2s = currentSeeds.filter(s => s.type === 'S2');
-                if (mos.length < 3 || !currentPolygon) {
-                    showMsg("需要 3 个 Mo 原子以确定基矢");
-                    return;
-                }
-                
-                const o = mos[0];
-                const v1 = { x: mos[1].x - o.x, y: mos[1].y - o.y };
-                const v2 = { x: mos[2].x - o.x, y: mos[2].y - o.y };
-                
-                // 求解行列式以进行反向坐标映射
-                const det = v1.x * v2.y - v1.y * v2.x;
-                if (Math.abs(det) < 0.1) { showMsg("种子点线性相关，请重新标注"); return; }
+            // --- 载入并还原 CIF 坐标逻辑 ---
+            const handleCifImport = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const lines = event.target.result.split('\n');
+                    let cell = { a: 1, b: 1, c: 20 };
+                    let atoms = [];
+                    let loopCols = [];
+                    let inLoop = false;
+                    
+                    lines.forEach(line => {
+                        const l = line.trim();
+                        if (l.includes('_cell_length_a')) cell.a = parseFloat(l.split(/\s+/).pop());
+                        if (l.includes('_cell_length_b')) cell.b = parseFloat(l.split(/\s+/).pop());
+                        if (l === 'loop_') { inLoop = true; loopCols = []; return; }
+                        if (inLoop && l.startsWith('_atom_site_')) { loopCols.push(l); return; }
+                        if (inLoop && l && !l.startsWith('_')) {
+                            const parts = l.split(/\s+/);
+                            const getIdx = (k) => loopCols.findIndex(c => c.includes(k));
+                            const xIdx = getIdx('_fract_x'), yIdx = getIdx('_fract_y'), symIdx = getIdx('_type_symbol');
+                            if (xIdx !== -1 && parts.length >= loopCols.length) {
+                                const fx = parseFloat(parts[xIdx]), fy = parseFloat(parts[yIdx]), sym = parts[symIdx] || 'S';
+                                atoms.push({
+                                    x: (fx * cell.a) / SCALE_DEFAULT,
+                                    y: (fy * cell.b) / SCALE_DEFAULT,
+                                    type: sym.startsWith('M') ? 'Mo' : 'S2',
+                                    id: `import-${Date.now()}-${Math.random()}`
+                                });
+                            }
+                        }
+                    });
 
-                // 计算 S 原子柱相对于其最近 Mo 格点的局部偏移
+                    if (atoms.length > 0) {
+                        pushHistory();
+                        setManualAtoms(prev => {
+                            const uniqueAtoms = atoms.filter(a => !prev.some(p => Math.sqrt((p.x-a.x)**2+(p.y-a.y)**2) < 2));
+                            return [...prev, ...uniqueAtoms];
+                        });
+                        showMsg(`已载入 ${atoms.length} 个原子，开始人工修正`);
+                    }
+                };
+                reader.readAsText(file);
+            };
+
+            const performExtrapolation = () => {
+                const mos = currentSeeds.filter(s => s.type === 'Mo'), s2s = currentSeeds.filter(s => s.type === 'S2');
+                if (mos.length < 3 || !currentPolygon) { showMsg("需要 3 个 Mo 种子确定取向"); return; }
+                const o = mos[0], v1 = { x: mos[1].x - o.x, y: mos[1].y - o.y }, v2 = { x: mos[2].x - o.x, y: mos[2].y - o.y };
+                const det = v1.x * v2.y - v1.y * v2.x;
+                if (Math.abs(det) < 0.1) { showMsg("种子点线性相关，取向无效"); return; }
                 const sLocalOffsets = s2s.map(s => {
-                    const dx = s.x - o.x, dy = s.y - o.y;
-                    const i = (dx * v2.y - dy * v2.x) / det;
-                    const j = (v1.x * dy - v1.y * dx) / det;
-                    const ni = Math.round(i), nj = Math.round(j);
+                    const dx = s.x - o.x, dy = s.y - o.y, i = (dx * v2.y - dy * v2.x) / det, j = (v1.x * dy - v1.y * dx) / det, ni = Math.round(i), nj = Math.round(j);
                     return { x: dx - (ni * v1.x + nj * v2.x), y: dy - (ni * v1.y + nj * v2.y) };
                 });
-
                 let avgSShift = { x: (v1.x + v2.x) / 3, y: (v1.y + v2.y) / 3 };
                 if (sLocalOffsets.length > 0) {
                     const sum = sLocalOffsets.reduce((acc, cur) => ({ x: acc.x + cur.x, y: acc.y + cur.y }), { x: 0, y: 0 });
                     avgSShift = { x: sum.x / sLocalOffsets.length, y: sum.y / sLocalOffsets.length };
                 }
-
                 const genAtoms = [];
-                const range = 150;
-                for (let i = -range; i < range; i++) {
-                    for (let j = -range; j < range; j++) {
+                for (let i = -150; i < 150; i++) {
+                    for (let j = -150; j < 150; j++) {
                         const mx = i * v1.x + j * v2.x, my = i * v1.y + j * v2.y;
                         genAtoms.push({ x: mx, y: my, type: 'Mo', id: `m-${i}-${j}-${Date.now()}` });
                         genAtoms.push({ x: mx + avgSShift.x, y: my + avgSShift.y, type: 'S2', id: `s-${i}-${j}-${Date.now()}` });
@@ -210,8 +239,7 @@
             };
 
             const enterDomainEdit = (domain) => {
-                const cx = domain.atoms.reduce((sum, a) => sum + a.x, 0) / domain.atoms.length;
-                const cy = domain.atoms.reduce((sum, a) => sum + a.y, 0) / domain.atoms.length;
+                const cx = domain.atoms.reduce((sum, a) => sum + a.x, 0) / domain.atoms.length, cy = domain.atoms.reduce((sum, a) => sum + a.y, 0) / domain.atoms.length;
                 setEditingDomain({ ...domain, originalAtoms: domain.atoms.map(a => ({ ...a, x: a.x - cx, y: a.y - cy })), transform: { x: cx, y: cy, scale: 1.0, rot: 0.0 } });
                 setViewMode('transform_domain');
             };
@@ -237,7 +265,7 @@
                     setDomains(prev => prev.map(d => d.id === editingDomain.id ? { ...d, atoms: finalizedAtoms } : d));
                     setEditingDomain(null);
                 }
-                setViewMode('edit'); showMsg("物理取向已同步合并");
+                setViewMode('edit'); showMsg("晶畴位姿已更新");
             };
 
             const handleMouseDown = (e) => {
@@ -304,29 +332,47 @@
                 if (currentPolygon) { ctx.beginPath(); ctx.moveTo(currentPolygon.points[0].x, currentPolygon.points[0].y); currentPolygon.points.forEach(p => ctx.lineTo(p.x, p.y)); ctx.strokeStyle = '#fff'; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]); }
                 currentSeeds.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, 8, 0, Math.PI * 2); ctx.fillStyle = ATOM_COLORS[s.type]; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); });
                 if (isDragging && selectionStart && selectionEnd) {
-                    ctx.strokeStyle = '#ef4444'; ctx.setLineDash([2, 2]); ctx.strokeRect(selectionStart.x, selectionStart.y, selectionEnd.x - selectionStart.x, selectionEnd.y - selectionStart.y);
-                    ctx.fillStyle = 'rgba(239, 68, 68, 0.1)'; ctx.fillRect(selectionStart.x, selectionStart.y, selectionEnd.x - selectionStart.x, selectionEnd.y - selectionStart.y); ctx.setLineDash([]);
+                    ctx.strokeStyle = '#ef4444'; ctx.setLineDash([2, 2]); ctx.strokeRect(selectionStart.x * zoomLevel, selectionStart.y * zoomLevel, (selectionEnd.x - selectionStart.x) * zoomLevel, (selectionEnd.y - selectionStart.y) * zoomLevel);
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.1)'; ctx.setLineDash([]);
                 }
             }, [image, manualAtoms, gbMasks, domains, ghostDomain, editingDomain, currentPolygon, currentSeeds, selectionStart, selectionEnd, isDragging, zoomLevel]);
 
+            // --- 核心修复：导出回正交轴模式 (90, 90, 90) 以消除切变 ---
+            const exportFinalCIF = () => {
+                const all = [...manualAtoms, ...domains.flatMap(d => d.atoms)];
+                if (all.length === 0) return;
+                const boxX = Math.max(...all.map(a => a.x * SCALE_DEFAULT)) + 10, boxY = Math.max(...all.map(a => a.y * SCALE_DEFAULT)) + 10;
+                let cif = `data_MoS2_V23\n_cell_length_a ${boxX.toFixed(4)}\n_cell_length_b ${boxY.toFixed(4)}\n_cell_length_c 20.0\n_cell_angle_alpha 90\n_cell_angle_beta 90\n_cell_angle_gamma 90\n_symmetry_space_group_name_H-M 'P 1'\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n`;
+                all.forEach((a, i) => {
+                    const fx = (a.x * SCALE_DEFAULT) / boxX, fy = (a.y * SCALE_DEFAULT) / boxY;
+                    if (a.type === 'Mo') cif += `Mo${i} Mo ${fx.toFixed(6)} ${fy.toFixed(6)} 0.500000\n`;
+                    else if (a.type === 'S2') { cif += `S${i}a S ${fx.toFixed(6)} ${fy.toFixed(6)} ${(10+1.56)/20}\nS${i}b S ${fx.toFixed(6)} ${fy.toFixed(6)} ${(10-1.56)/20}\n`; }
+                    else cif += `S${i} S ${fx.toFixed(6)} ${fy.toFixed(6)} ${(10+1.56)/20}\n`;
+                });
+                const b = new Blob([cif], { type: 'text/plain' }); const l = document.createElement('a'); l.href = URL.createObjectURL(b); l.download = 'perfect_aligned_structure.cif'; l.click(); showMsg("修正后的 CIF 已按正交轴导出");
+            };
+
             return (
                 <div className="flex flex-col h-screen bg-[#020617] text-slate-100 font-sans select-none overflow-hidden">
+                    {/* Header */}
                     <div className="flex items-center justify-between px-6 py-3 bg-[#0f172a] border-b border-slate-800 shadow-2xl z-30">
                         <div className="flex items-center gap-6">
-                            <h1 className="text-xl font-black tracking-tighter flex items-center gap-2 text-blue-400 italic"><Icon name="layers" size={22} className="text-blue-500" /> MoS2 PRECISION V21</h1>
+                            <h1 className="text-xl font-black tracking-tighter flex items-center gap-2 text-blue-400 italic"><Icon name="layers" size={22} className="text-blue-500" /> MoS2 PRECISION V23</h1>
                             <div className="flex gap-2">
-                                <button onClick={undo} className="p-2 bg-slate-800/50 hover:bg-slate-700 rounded transition border border-slate-700" title="撤回"><Icon name="undo-2" /></button>
-                                <button onClick={restoreProgress} className="p-2 bg-blue-900/30 hover:bg-blue-800 rounded transition border border-blue-800 text-blue-300 flex items-center gap-2 px-3 text-xs font-bold"><Icon name="history" size={16}/> 恢复标注</button>
-                                <button onClick={() => {if(confirm('重置所有工作？')) {localStorage.clear(); window.location.reload();}}} className="p-2 hover:bg-red-900/40 rounded text-red-400"><Icon name="rotate-ccw" /></button>
+                                <button onClick={undo} className="p-2 bg-slate-800/50 hover:bg-slate-700 rounded transition border border-slate-700" title="撤回上一步"><Icon name="undo-2" /></button>
+                                <button onClick={restoreProgress} className="p-2 bg-blue-900/30 hover:bg-blue-800 rounded transition border border-blue-800 text-blue-300 flex items-center gap-2 px-3 text-xs font-bold"><Icon name="history" size={16}/> 恢复上次进度</button>
+                                <button onClick={() => {if(confirm('重置所有工作？')) {localStorage.clear(); window.location.reload();}}} className="p-2 hover:bg-red-900/40 rounded text-red-400" title="清空全部"><Icon name="rotate-ccw" /></button>
                             </div>
                         </div>
                         <div className="flex gap-2">
                             <label className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg cursor-pointer text-xs font-bold border border-slate-700 transition flex items-center gap-2">
-                                <Icon name="upload" size={14}/> 载入 STEM<input type="file" className="hidden" onChange={handleImageUpload} />
+                                <Icon name="image" size={14}/> 1. 载入 STEM<input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                            </label>
+                            <label className="bg-indigo-900/40 hover:bg-indigo-800 px-4 py-2 rounded-lg cursor-pointer text-xs font-bold border border-indigo-700 transition flex items-center gap-2 text-indigo-300">
+                                <Icon name="file-digit" size={14}/> 2. 载入 CIF (修复用)<input type="file" className="hidden" accept=".cif" onChange={handleCifImport} />
                             </label>
                             <div className="h-8 w-px bg-slate-800 mx-1" />
-                            <button onClick={() => { if(manualAtoms.length+domains.length===0) return; const boxX = Math.max(...manualAtoms.map(a=>a.x*SCALE_DEFAULT), ...domains.flatMap(d=>d.atoms.map(a=>a.x*SCALE_DEFAULT)))+10; const boxY = Math.max(...manualAtoms.map(a=>a.y*SCALE_DEFAULT), ...domains.flatMap(d=>d.atoms.map(a=>a.y*SCALE_DEFAULT)))+10; let cif = `data_MoS2\n_cell_length_a ${boxX.toFixed(4)}\n_cell_length_b ${boxY.toFixed(4)}\n_cell_length_c 20.0\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\n`; [...manualAtoms, ...domains.flatMap(d=>d.atoms)].forEach((a, i) => { const fx = (a.x * SCALE_DEFAULT) / boxX, fy = (a.y * SCALE_DEFAULT) / boxY; if (a.type === 'Mo') cif += `Mo${i} Mo ${fx.toFixed(6)} ${fy.toFixed(6)} 0.500000\n`; else if (a.type === 'S2') { cif += `S${i}a S ${fx.toFixed(6)} ${fy.toFixed(6)} ${(10+1.56)/20}\nS${i}b S ${fx.toFixed(6)} ${fy.toFixed(6)} ${(10-1.56)/20}\n`; } else cif += `S${i} S ${fx.toFixed(6)} ${fy.toFixed(6)} ${(10+1.56)/20}\n`; }); const b = new Blob([cif], { type: 'text/plain' }); const l = document.createElement('a'); l.href = URL.createObjectURL(b); l.download = 'aligned_v21.cif'; l.click(); }} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg transition"><Icon name="file-down" size={14}/> CIF</button>
-                            <button onClick={() => { if(!canvasRef.current) return; const l = document.createElement('a'); l.download = 'stem_labeled.png'; l.href = canvasRef.current.toDataURL("image/png"); l.click(); }} className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg transition"><Icon name="image" size={14}/> PNG</button>
+                            <button onClick={exportFinalCIF} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg transition"><Icon name="save" size={14}/> 导出 CIF</button>
                         </div>
                     </div>
 
@@ -335,7 +381,7 @@
 
                         <div className="w-80 bg-[#0f172a] border-r border-slate-800 flex flex-col p-5 gap-6 overflow-y-auto sidebar-scroll">
                             <section>
-                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center border-b border-slate-800 pb-2">1. 空间分域补全</h2>
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center border-b border-slate-800 pb-2">1. 区域外推 (补全模式)</h2>
                                 <div className="space-y-2">
                                     <button onClick={() => {setViewMode('gb_mask'); setCurrentPolygon(null);}} className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition text-xs font-bold ${viewMode === 'gb_mask' ? 'tool-active' : 'border-slate-800 bg-slate-900/40'}`}>
                                         <Icon name="pen-tool" size={16} /> 划定晶界禁区
@@ -357,36 +403,35 @@
                                         <div/><button onClick={() => adjustTransform(viewMode === 'transform_ghost'?'ghost':'domain', 'y', 0.1)} className="p-2 bg-slate-800 rounded hover:bg-slate-700 flex justify-center text-blue-400"><Icon name="chevron-down" size={14}/></button><div/>
                                     </div>
                                     <div className="space-y-4">
-                                        <div><div className="flex justify-between text-[9px] mb-1 text-slate-400 text-center w-full block font-bold uppercase tracking-tighter"><span>旋转角度: {(viewMode==='transform_ghost'?ghostDomain:editingDomain).transform.rot.toFixed(1)}°</span></div><input type="range" min="-15" max="15" step="0.1" value={(viewMode==='transform_ghost'?ghostDomain:editingDomain).transform.rot} onChange={(e)=>adjustTransform(viewMode==='transform_ghost'?'ghost':'domain', 'rot', parseFloat(e.target.value)-(viewMode==='transform_ghost'?ghostDomain:editingDomain).transform.rot)} className="w-full h-1" /></div>
-                                        <div><div className="flex justify-between text-[9px] mb-1 text-slate-400 text-center w-full block font-bold uppercase tracking-tighter"><span>比例因子: x{(viewMode==='transform_ghost'?ghostDomain:editingDomain).transform.scale.toFixed(3)}</span></div><input type="range" min="0.9" max="1.1" step="0.001" value={(viewMode==='transform_ghost'?ghostDomain:editingDomain).transform.scale} onChange={(e)=>adjustTransform(viewMode==='transform_ghost'?'ghost':'domain', 'scale', parseFloat(e.target.value)-(viewMode==='transform_ghost'?ghostDomain:editingDomain).transform.scale)} className="w-full h-1" /></div>
-                                        <div className="flex flex-col gap-2"><button onClick={() => finalizeTransform(viewMode==='transform_ghost'?'ghost':'domain')} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xs transition flex items-center justify-center gap-2"><Icon name="check-circle-2" size={16}/> 确认并合并</button><button onClick={() => {setGhostDomain(null); setEditingDomain(null); setViewMode('edit');}} className="w-full py-2 bg-red-900/20 text-red-400 rounded-xl text-[10px] font-bold text-center">放弃修改</button></div>
+                                        <div className="flex flex-col gap-2"><button onClick={() => finalizeTransform(viewMode==='transform_ghost'?'ghost':'domain')} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xs transition flex items-center justify-center gap-2"><Icon name="check-circle-2" size={16}/> 确认并合并</button><button onClick={() => {setGhostDomain(null); setEditingDomain(null); setViewMode('edit');}} className="w-full py-2 bg-red-900/20 text-red-400 rounded-xl text-[10px] font-bold text-center italic">放弃修正</button></div>
                                     </div>
                                 </section>
                             )}
 
                             <section>
-                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center border-b border-slate-800 pb-2">2. 晶粒管理</h2>
-                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1 sidebar-scroll">
-                                    {domains.length === 0 && <p className="text-[9px] text-slate-600 italic text-center py-2 border border-dashed border-slate-800 rounded">暂无生成的晶粒</p>}
-                                    {domains.map(d => (
-                                        <div key={d.id} className="flex items-center justify-between p-2 rounded bg-slate-900/50 border border-slate-800 hover:border-blue-500/50 transition"><span className="text-[10px] font-bold text-slate-400 truncate w-32">{d.name}</span><div className="flex gap-1"><button onClick={() => enterDomainEdit(d)} className="p-1 text-slate-500 hover:text-blue-400" title="调整区域"><Icon name="sliders" size={14}/></button><button onClick={() => {pushHistory(); setDomains(prev => prev.filter(x => x.id !== d.id));}} className="p-1 text-slate-500 hover:text-red-400" title="删除"><Icon name="trash-2" size={14}/></button></div></div>
-                                    ))}
-                                </div>
-                            </section>
-
-                            <section className="pb-10">
-                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 text-center border-b border-slate-800 pb-2">3. 全能橡皮擦</h2>
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 text-center border-b border-slate-800 pb-2">2. 局部修补 (手动模式)</h2>
                                 <div className="grid grid-cols-2 gap-2 mb-2">
-                                    <button onClick={() => setViewMode('edit')} className={`p-3 rounded-xl border-2 transition ${viewMode === 'edit' ? 'tool-active' : 'border-slate-800'}`}><Icon name="plus" size={18} /><span className="text-[9px] block mt-1 font-bold">手动标注</span></button>
+                                    <button onClick={() => setViewMode('edit')} className={`p-3 rounded-xl border-2 transition ${viewMode === 'edit' ? 'tool-active' : 'border-slate-800'}`}><Icon name="plus" size={18} /><span className="text-[9px] block mt-1 font-bold">手动补点</span></button>
                                     <button onClick={() => setViewMode('delete')} className={`p-3 rounded-xl border-2 transition ${viewMode === 'delete' ? 'tool-active' : 'border-slate-800'}`}><Icon name="mouse-pointer-2" size={18} /><span className="text-[9px] block mt-1 font-bold">点消除</span></button>
-                                    <button onClick={() => setViewMode('delete_area')} className={`p-3 col-span-2 rounded-xl border-2 transition ${viewMode === 'delete_area' ? 'tool-active' : 'border-slate-800'}`}><Icon name="square" size={18} className="mx-auto" /><span className="text-[9px] block mt-1 font-bold text-center">区域内所有原子消除</span></button>
+                                    <button onClick={() => setViewMode('delete_area')} className={`p-3 col-span-2 rounded-xl border-2 transition ${viewMode === 'delete_area' ? 'tool-active' : 'border-slate-800'}`}><Icon name="square" size={18} className="mx-auto" /><span className="text-[9px] block mt-1 font-black text-center italic uppercase tracking-tighter">框选批量清除 (含载入原子)</span></button>
                                 </div>
                                 <div className="flex gap-1 bg-black/40 p-1.5 rounded-lg border border-slate-800">
                                     {['Mo', 'S2', 'S1'].map(t => ( <button key={t} onClick={() => setSelectedType(t)} className={`flex-1 py-1 rounded text-[10px] font-bold transition ${selectedType === t ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>{t}</button> ))}
                                 </div>
                             </section>
+
+                            <section className="pb-10">
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center border-b border-slate-800 pb-2">3. 晶粒分域管理</h2>
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1 sidebar-scroll">
+                                    {domains.length === 0 && <p className="text-[9px] text-slate-600 italic text-center py-2 border border-dashed border-slate-800 rounded">暂无生成的晶粒域</p>}
+                                    {domains.map(d => (
+                                        <div key={d.id} className="flex items-center justify-between p-2 rounded bg-slate-900/50 border border-slate-800 hover:border-blue-500/50 transition"><span className="text-[10px] font-bold text-slate-400 truncate w-32">{d.name}</span><div className="flex gap-1"><button onClick={() => enterDomainEdit(d)} className="p-1 text-slate-500 hover:text-blue-400" title="调整区域位姿"><Icon name="sliders" size={14}/></button><button onClick={() => {pushHistory(); setDomains(prev => prev.filter(x => x.id !== d.id));}} className="p-1 text-slate-500 hover:text-red-400" title="移除"><Icon name="trash-2" size={14}/></button></div></div>
+                                    ))}
+                                </div>
+                            </section>
                         </div>
 
+                        {/* Main Viewport */}
                         <div className="main-viewport" onWheel={handleWheel}>
                             <div className="absolute top-6 left-6 z-20 space-y-3 pointer-events-none sticky">
                                 {viewMode === 'seed' && (
@@ -396,12 +441,12 @@
                                         {currentSeeds.length > 0 && <button onClick={() => setCurrentSeeds(prev => prev.slice(0,-1))} className="bg-slate-900 text-white p-1 rounded hover:bg-black transition"><Icon name="corner-up-left" size={12}/></button>}
                                     </div>
                                 )}
-                                {viewMode === 'delete_area' && <div className="bg-red-600 text-white px-4 py-2 rounded-xl text-[11px] font-bold shadow-2xl flex items-center gap-2 animate-pulse pointer-events-auto"><Icon name="square" size={14} /> 区域消除模式：拖拽鼠标框选</div>}
+                                {viewMode === 'delete_area' && <div className="bg-red-600 text-white px-4 py-2 rounded-xl text-[11px] font-bold shadow-2xl flex items-center gap-2 animate-pulse pointer-events-auto"><Icon name="square" size={14} /> 批量消除模式：拖拽鼠标框选原子位点</div>}
                             </div>
                             
                             <div className="canvas-wrapper">
                                 {image ? (
-                                    <div className="relative shadow-[0_0_150px_rgba(0,0,0,0.9)] border border-slate-800 bg-slate-950 rounded overflow-hidden">
+                                    <div className="relative shadow-[0_0_150px_rgba(0,0,0,1)] border border-slate-800 bg-slate-950 rounded-sm overflow-hidden">
                                         <canvas 
                                             ref={canvasRef} 
                                             width={image.width} 
@@ -426,10 +471,10 @@
                         </div>
                         
                         <div className="zoom-overlay flex items-center gap-4">
-                             <div className="bg-slate-900/80 border border-slate-700 px-4 py-2 rounded-full text-[10px] font-mono text-blue-400 shadow-xl flex items-center gap-3 pointer-events-auto">
+                             <div className="bg-slate-900/90 border border-slate-700 px-4 py-2 rounded-full text-[10px] font-mono text-blue-400 shadow-xl flex items-center gap-3 pointer-events-auto backdrop-filter backdrop-blur-sm">
                                  <span>{(zoomLevel * 100).toFixed(0)}%</span>
                                  <div className="w-px h-4 bg-slate-700" />
-                                 <button onClick={() => setZoomLevel(1.0)} className="hover:text-white transition font-bold">RESET</button>
+                                 <button onClick={() => setZoomLevel(1.0)} className="hover:text-white transition font-bold uppercase tracking-tighter">Reset Zoom</button>
                              </div>
                         </div>
                     </div>
