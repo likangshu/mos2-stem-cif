@@ -1,0 +1,36 @@
+# ── MoS₂ STEM Bragg-Filter Denoiser  ──────────────────────────────────────
+# requirements.txt
+#
+# Install everything:
+#   pip install -r requirements.txt
+#
+# For reading .dm3 / .dm4 files you need AT LEAST ONE of:
+#   • hyperspy   (recommended; full-featured EM file reader)
+#   • ncempy     (lighter alternative; Gatan DM + EMD support)
+# Both are listed below; pip will install whichever is available.
+# If you only need .tif support, you can skip both.
+# ───────────────────────────────────────────────────────────────────────────
+
+# Web framework
+streamlit>=1.32.0
+
+# Numerical computing
+numpy>=1.24.0
+scipy>=1.11.0
+
+# Plotting / visualisation
+matplotlib>=3.7.0
+
+# TIFF I/O (read & write float32 scientific TIFFs)
+tifffile>=2023.1.23
+
+# Image loading fallback
+Pillow>=9.5.0
+
+# ── DM3/DM4 readers (install at least one) ─────────────────────────────────
+
+# Option A – hyperspy (full-featured; large install ~200 MB with dependencies)
+hyperspy>=2.0.0
+
+# Option B – ncempy (lighter ~5 MB; uncomment if you prefer it over hyperspy)
+# ncempy>=1.10.0
