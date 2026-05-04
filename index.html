@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MoS2 晶界交互编辑器 V32 - 手动衬度版</title>
+    <title>MoS2 晶界交互编辑器 V33 - 独立缩放版</title>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -98,12 +98,21 @@
             border-radius: 50%;
         }
 
-        .zoom-overlay {
-            position: absolute;
-            bottom: 40px;
-            right: 40px;
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .zoom-panel {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
             z-index: 50;
-            pointer-events: none;
+            width: 280px;
         }
 
         .interaction-hint {
@@ -144,6 +153,13 @@
 
         const BORDER_DETECT_SCALE = 0.3;
         const SAMPLE_TARGET = 60000;
+
+        const ZOOM_MIN = 0.1;
+        const ZOOM_MAX = 20.0;
+        const ZOOM_PRESETS = [0.25, 0.5, 1, 2, 4, 8];
+
+        const ATOM_SCALE_MIN = 0.1;
+        const ATOM_SCALE_MAX = 4.0;
 
         const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
@@ -359,6 +375,12 @@
             const [imageSource, setImageSource] = React.useState(null);
             const [image, setImage] = React.useState(null);
             const [zoomLevel, setZoomLevel] = React.useState(1.0);
+            const [zoomInputText, setZoomInputText] = React.useState("100");
+
+            // ✦ 新增：标记点视觉大小独立倍率（与 STEM 缩放解耦）
+            const [atomScale, setAtomScale] = React.useState(1.0);
+            // ✦ 新增：是否启用"视觉恒定大小"自动补偿（开启后 atomScale = 1/zoomLevel）
+            const [autoCompensate, setAutoCompensate] = React.useState(false);
 
             const [contrast, setContrast] = React.useState({ ...DISPLAY_DEFAULTS });
 
@@ -383,6 +405,11 @@
             const canvasRef = React.useRef(null);
 
             const isTiffLoaded = imageSource && imageSource.kind === "tiff";
+
+            // ✦ 实际用于绘制原子的视觉倍率（自动补偿优先）
+            const effectiveAtomScale = autoCompensate
+                ? clamp(1 / zoomLevel, ATOM_SCALE_MIN, ATOM_SCALE_MAX)
+                : atomScale;
 
             React.useEffect(() => {
                 if (viewMode !== "transform_ghost" && viewMode !== "transform_domain") {
@@ -419,6 +446,11 @@
                     console.error(err);
                 }
             }, [imageSource, contrast]);
+
+            // ✦ 同步缩放输入框文本
+            React.useEffect(() => {
+                setZoomInputText(Math.round(zoomLevel * 100).toString());
+            }, [zoomLevel]);
 
             const showMsg = (txt) => {
                 setMessage(txt);
@@ -459,10 +491,24 @@
                 };
             };
 
+            // ✦ 缩放操作集中处理
+            const setZoomClamped = (z) => {
+                setZoomLevel(clamp(z, ZOOM_MIN, ZOOM_MAX));
+            };
+
             const handleWheel = (e) => {
                 if (e.ctrlKey || e.metaKey) {
                     e.preventDefault();
-                    setZoomLevel((prev) => Math.min(Math.max(prev * (e.deltaY > 0 ? 0.9 : 1.1), 0.1), 10));
+                    setZoomClamped(zoomLevel * (e.deltaY > 0 ? 0.9 : 1.1));
+                }
+            };
+
+            const handleZoomInputCommit = () => {
+                const v = parseFloat(zoomInputText);
+                if (Number.isFinite(v) && v > 0) {
+                    setZoomClamped(v / 100);
+                } else {
+                    setZoomInputText(Math.round(zoomLevel * 100).toString());
                 }
             };
 
@@ -798,6 +844,14 @@
                 ctx.clearRect(0, 0, image.width, image.height);
                 ctx.drawImage(image, 0, 0);
 
+                // ✦ 所有原子半径都乘 effectiveAtomScale
+                const rManual = 6 * effectiveAtomScale;
+                const rDomain = 4 * effectiveAtomScale;
+                const rSeed = 8 * effectiveAtomScale;
+                const rPreview = 4 * effectiveAtomScale;
+                const lwManual = Math.max(0.5, 1.5 * effectiveAtomScale);
+                const lwSeed = Math.max(0.5, 2 * effectiveAtomScale);
+
                 gbMasks.forEach((mask) => {
                     ctx.beginPath();
                     ctx.moveTo(mask.points[0].x, mask.points[0].y);
@@ -812,7 +866,7 @@
 
                     d.atoms.forEach((a) => {
                         ctx.beginPath();
-                        ctx.arc(a.x, a.y, 4, 0, Math.PI * 2);
+                        ctx.arc(a.x, a.y, rDomain, 0, Math.PI * 2);
                         ctx.fillStyle = ATOM_COLORS[a.type] + "aa";
                         ctx.fill();
                     });
@@ -838,7 +892,7 @@
                         const rx = (a.x * Math.cos(rad) - a.y * Math.sin(rad)) * scale + x;
                         const ry = (a.x * Math.sin(rad) + a.y * Math.cos(rad)) * scale + y;
                         ctx.beginPath();
-                        ctx.arc(a.x * scale, a.y * scale, 4, 0, Math.PI * 2);
+                        ctx.arc(a.x * scale, a.y * scale, rPreview, 0, Math.PI * 2);
                         ctx.fillStyle = isPointInPolygon(rx, ry, data.boundary) ? ATOM_COLORS[a.type] : "rgba(255,255,255,0.05)";
                         ctx.fill();
                     });
@@ -851,11 +905,11 @@
 
                 manualAtoms.forEach((a) => {
                     ctx.beginPath();
-                    ctx.arc(a.x, a.y, 6, 0, Math.PI * 2);
+                    ctx.arc(a.x, a.y, rManual, 0, Math.PI * 2);
                     ctx.fillStyle = ATOM_COLORS[a.type];
                     ctx.fill();
                     ctx.strokeStyle = "#fff";
-                    ctx.lineWidth = 1.5;
+                    ctx.lineWidth = lwManual;
                     ctx.stroke();
                 });
 
@@ -877,11 +931,11 @@
 
                 currentSeeds.forEach((s) => {
                     ctx.beginPath();
-                    ctx.arc(s.x, s.y, 8, 0, Math.PI * 2);
+                    ctx.arc(s.x, s.y, rSeed, 0, Math.PI * 2);
                     ctx.fillStyle = ATOM_COLORS[s.type];
                     ctx.fill();
                     ctx.strokeStyle = "#fff";
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = lwSeed;
                     ctx.stroke();
                 });
 
@@ -916,7 +970,8 @@
                 selectionEnd,
                 isDragging,
                 zoomLevel,
-                viewMode
+                viewMode,
+                effectiveAtomScale
             ]);
 
             const exportFinalCIF = () => {
@@ -992,7 +1047,7 @@ _atom_site_fract_z
                         <div className="flex items-center gap-6">
                             <h1 className="text-xl font-black tracking-tighter flex items-center gap-2 text-blue-400 italic">
                                 <Icon name="layers" size={22} className="text-blue-500" />
-                                MoS2 PRECISION V32
+                                MoS2 PRECISION V33
                             </h1>
 
                             <div className="flex gap-2">
@@ -1313,12 +1368,134 @@ _atom_site_fract_z
                             </div>
                         </div>
 
-                        <div className="zoom-overlay flex items-center gap-4">
-                            <div className="bg-slate-900/90 border border-slate-700 px-4 py-2 rounded-full text-[10px] font-mono text-blue-400 shadow-xl flex items-center gap-3 pointer-events-auto backdrop-filter backdrop-blur-sm">
-                                <span>{(zoomLevel * 100).toFixed(0)}%</span>
-                                <button onClick={() => setZoomLevel(1.0)} className="hover:text-white transition font-bold uppercase tracking-tighter leading-none">
-                                    Reset Zoom
-                                </button>
+                        {/* ✦ 新增：浮动缩放控制面板（精确数字输入 + 步进 + 滑块 + 预设 + 标记点大小补偿） */}
+                        <div className="zoom-panel">
+                            <div className="bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl backdrop-blur p-4 space-y-3 pointer-events-auto">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Icon name="zoom-in" size={12} />
+                                        STEM 缩放
+                                    </span>
+                                    <button
+                                        onClick={() => setZoomLevel(1.0)}
+                                        className="text-[10px] font-bold text-slate-400 hover:text-white transition"
+                                        title="重置到 100%"
+                                    >
+                                        重置
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setZoomClamped(zoomLevel - 0.05)}
+                                        className="w-8 h-8 rounded bg-slate-800 hover:bg-slate-700 text-white font-black text-sm border border-slate-700 transition"
+                                        title="-5%"
+                                    >
+                                        −
+                                    </button>
+                                    <button
+                                        onClick={() => setZoomClamped(zoomLevel - 0.01)}
+                                        className="w-8 h-8 rounded bg-slate-800/60 hover:bg-slate-700 text-slate-300 font-bold text-[10px] border border-slate-700 transition"
+                                        title="-1%（细调）"
+                                    >
+                                        −1
+                                    </button>
+                                    <input
+                                        type="number"
+                                        min="10"
+                                        max="2000"
+                                        step="1"
+                                        value={zoomInputText}
+                                        onChange={(e) => setZoomInputText(e.target.value)}
+                                        onBlur={handleZoomInputCommit}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                handleZoomInputCommit();
+                                                e.target.blur();
+                                            }
+                                        }}
+                                        className="flex-1 bg-slate-800 text-blue-400 font-mono font-bold text-sm px-2 py-1 rounded text-center border border-slate-700 focus:border-blue-500 outline-none"
+                                    />
+                                    <span className="text-xs text-slate-500 font-bold">%</span>
+                                    <button
+                                        onClick={() => setZoomClamped(zoomLevel + 0.01)}
+                                        className="w-8 h-8 rounded bg-slate-800/60 hover:bg-slate-700 text-slate-300 font-bold text-[10px] border border-slate-700 transition"
+                                        title="+1%（细调）"
+                                    >
+                                        +1
+                                    </button>
+                                    <button
+                                        onClick={() => setZoomClamped(zoomLevel + 0.05)}
+                                        className="w-8 h-8 rounded bg-slate-800 hover:bg-slate-700 text-white font-black text-sm border border-slate-700 transition"
+                                        title="+5%"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+
+                                <input
+                                    type="range"
+                                    min={ZOOM_MIN}
+                                    max={ZOOM_MAX}
+                                    step="0.01"
+                                    value={zoomLevel}
+                                    onChange={(e) => setZoomClamped(parseFloat(e.target.value))}
+                                />
+
+                                <div className="flex gap-1">
+                                    {ZOOM_PRESETS.map((z) => (
+                                        <button
+                                            key={z}
+                                            onClick={() => setZoomLevel(z)}
+                                            className={`flex-1 py-1 rounded text-[9px] font-black transition ${
+                                                Math.abs(zoomLevel - z) < 0.005
+                                                    ? "bg-blue-600 text-white shadow-lg"
+                                                    : "bg-slate-800/70 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                                            }`}
+                                        >
+                                            {z * 100}%
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="border-t border-slate-800 pt-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                                            <Icon name="circle-dot" size={12} />
+                                            标记点大小
+                                        </span>
+                                        <span className="text-[10px] font-mono text-emerald-300">
+                                            {(effectiveAtomScale * 100).toFixed(0)}%
+                                        </span>
+                                    </div>
+
+                                    <input
+                                        type="range"
+                                        min={ATOM_SCALE_MIN}
+                                        max={ATOM_SCALE_MAX}
+                                        step="0.05"
+                                        value={atomScale}
+                                        disabled={autoCompensate}
+                                        onChange={(e) => setAtomScale(parseFloat(e.target.value))}
+                                        style={{ accentColor: autoCompensate ? "#475569" : "#10b981" }}
+                                    />
+
+                                    <button
+                                        onClick={() => setAutoCompensate((prev) => !prev)}
+                                        className={`w-full py-1.5 rounded text-[10px] font-black uppercase tracking-tighter transition border ${
+                                            autoCompensate
+                                                ? "bg-emerald-600/30 text-emerald-300 border-emerald-500"
+                                                : "bg-slate-800/50 text-slate-400 border-slate-700 hover:text-slate-200"
+                                        }`}
+                                        title="开启后，标记点视觉大小不随 STEM 缩放变化"
+                                    >
+                                        {autoCompensate ? "✓ 视觉恒定补偿（已启用）" : "启用视觉恒定补偿"}
+                                    </button>
+
+                                    <p className="text-[9px] leading-3 text-slate-500 italic">
+                                        放大 STEM 看细节时，标记点像素覆盖范围保持不变。
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
