@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MoS2 晶界交互编辑器 V33 - 独立缩放版</title>
+    <title>MoS2 晶界交互编辑器 V33 - 智能自适应版</title>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -13,115 +13,23 @@
     <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #020617;
-            color: #f1f5f9;
-            font-family: system-ui, -apple-system, sans-serif;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        canvas {
-            image-rendering: pixelated;
-            display: block;
-            background-color: #000;
-            transition: cursor 0.2s;
-        }
-
-        .main-viewport {
-            flex: 1;
-            background-color: #000;
-            overflow: auto;
-            position: relative;
-            display: block;
-        }
-
-        .main-viewport::-webkit-scrollbar {
-            width: 14px;
-            height: 14px;
-        }
-
-        .main-viewport::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-
-        .main-viewport::-webkit-scrollbar-thumb {
-            background: #3b82f6;
-            border-radius: 7px;
-            border: 3px solid #0f172a;
-        }
-
-        .main-viewport::-webkit-scrollbar-thumb:hover {
-            background: #60a5fa;
-        }
-
-        .canvas-wrapper {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 100%;
-            padding: 400px;
-        }
-
-        .sidebar-scroll::-webkit-scrollbar {
-            display: none;
-        }
-
-        .sidebar-scroll {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        .tool-active {
-            border-color: #3b82f6 !important;
-            background-color: rgba(59, 130, 246, 0.2) !important;
-            color: #60a5fa !important;
-        }
-
-        input[type="range"] {
-            accent-color: #3b82f6;
-            width: 100%;
-            height: 4px;
-            background: #1e293b;
-            border-radius: 2px;
-            appearance: none;
-            cursor: pointer;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            appearance: none;
-            width: 12px;
-            height: 12px;
-            background: #3b82f6;
-            border-radius: 50%;
-        }
-
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        input[type="number"] {
-            -moz-appearance: textfield;
-        }
-
-        .zoom-panel {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 50;
-            width: 280px;
-        }
-
-        .interaction-hint {
-            position: absolute;
-            top: 120px;
-            right: 20px;
-            z-index: 40;
-            pointer-events: none;
-        }
+        body { margin: 0; padding: 0; background-color: #020617; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; height: 100vh; overflow: hidden; }
+        canvas { image-rendering: pixelated; display: block; background-color: #000; transition: cursor 0.2s; }
+        .main-viewport { flex: 1; background-color: #000; overflow: auto; position: relative; display: block; }
+        .main-viewport::-webkit-scrollbar { width: 14px; height: 14px; }
+        .main-viewport::-webkit-scrollbar-track { background: #0f172a; }
+        .main-viewport::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 7px; border: 3px solid #0f172a; }
+        .main-viewport::-webkit-scrollbar-thumb:hover { background: #60a5fa; }
+        .canvas-wrapper { display: inline-flex; align-items: center; justify-content: center; min-width: 100%; padding: 400px; }
+        .sidebar-scroll::-webkit-scrollbar { display: none; }
+        .sidebar-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .tool-active { border-color: #3b82f6 !important; background-color: rgba(59, 130, 246, 0.2) !important; color: #60a5fa !important; }
+        input[type="range"] { accent-color: #3b82f6; width: 100%; height: 4px; background: #1e293b; border-radius: 2px; appearance: none; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 12px; height: 12px; background: #3b82f6; border-radius: 50%; }
+        input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+        .zoom-panel { position: fixed; bottom: 24px; right: 24px; z-index: 50; width: 280px; }
+        .interaction-hint { position: absolute; top: 120px; right: 20px; z-index: 40; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -139,17 +47,8 @@
             Ghost: "rgba(255, 255, 255, 0.5)"
         };
 
-        const DISPLAY_DEFAULTS = {
-            blackPct: 2.0,
-            whitePct: 99.5,
-            gamma: 1.0
-        };
-
-        const LINEAR_DISPLAY = {
-            blackPct: 0.0,
-            whitePct: 100.0,
-            gamma: 1.0
-        };
+        const DISPLAY_DEFAULTS = { blackPct: 2.0, whitePct: 99.5, gamma: 1.0 };
+        const LINEAR_DISPLAY = { blackPct: 0.0, whitePct: 100.0, gamma: 1.0 };
 
         const BORDER_DETECT_SCALE = 0.3;
         const SAMPLE_TARGET = 60000;
@@ -167,10 +66,8 @@
             if (!polygon || polygon.length < 3) return false;
             let inside = false;
             for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                const xi = polygon[i].x;
-                const yi = polygon[i].y;
-                const xj = polygon[j].x;
-                const yj = polygon[j].y;
+                const xi = polygon[i].x; const yi = polygon[i].y;
+                const xj = polygon[j].x; const yj = polygon[j].y;
                 if (((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)) inside = !inside;
             }
             return inside;
@@ -178,7 +75,6 @@
 
         const Icon = ({ name, size = 18, className = "" }) => {
             const containerRef = React.useRef(null);
-
             React.useEffect(() => {
                 if (window.lucide && containerRef.current) {
                     containerRef.current.innerHTML = "";
@@ -186,12 +82,9 @@
                     iconElt.setAttribute("data-lucide", name);
                     if (className) iconElt.className = className;
                     containerRef.current.appendChild(iconElt);
-                    window.lucide.createIcons({
-                        attrs: { strokeWidth: 2, width: size, height: size }
-                    });
+                    window.lucide.createIcons({ attrs: { strokeWidth: 2, width: size, height: size } });
                 }
             }, [name, size, className]);
-
             return <span ref={containerRef} className="inline-flex items-center justify-center leading-none" />;
         };
 
@@ -204,25 +97,18 @@
         const estimateValidThreshold = (band) => {
             const positives = [];
             const step = Math.max(1, Math.floor(band.length / 50000));
-
             for (let i = 0; i < band.length; i += step) {
                 const v = band[i];
                 if (Number.isFinite(v) && v > 0) positives.push(v);
             }
-
             if (positives.length === 0) return 0;
-
             positives.sort((a, b) => a - b);
             const p1 = positives[Math.floor((positives.length - 1) * 0.01)];
             return Math.max(1e-6, p1 * BORDER_DETECT_SCALE);
         };
 
         const findContentBox = (band, width, height, threshold) => {
-            let minX = width;
-            let minY = height;
-            let maxX = -1;
-            let maxY = -1;
-
+            let minX = width, minY = height, maxX = -1, maxY = -1;
             for (let y = 0; y < height; y++) {
                 const rowOffset = y * width;
                 for (let x = 0; x < width; x++) {
@@ -235,11 +121,7 @@
                     }
                 }
             }
-
-            if (maxX < 0) {
-                return { minX: 0, minY: 0, maxX: width - 1, maxY: height - 1 };
-            }
-
+            if (maxX < 0) return { minX: 0, minY: 0, maxX: width - 1, maxY: height - 1 };
             return { minX, minY, maxX, maxY };
         };
 
@@ -247,9 +129,7 @@
             const sample = [];
             const boxW = Math.max(1, contentBox.maxX - contentBox.minX + 1);
             const boxH = Math.max(1, contentBox.maxY - contentBox.minY + 1);
-            const total = boxW * boxH;
-            const step = Math.max(1, Math.floor(Math.sqrt(total / SAMPLE_TARGET)));
-
+            const step = Math.max(1, Math.floor(Math.sqrt((boxW * boxH) / SAMPLE_TARGET)));
             for (let y = contentBox.minY; y <= contentBox.maxY; y += step) {
                 const rowOffset = y * width;
                 for (let x = contentBox.minX; x <= contentBox.maxX; x += step) {
@@ -257,9 +137,7 @@
                     if (Number.isFinite(v) && v > ignoreBelow) sample.push(v);
                 }
             }
-
             if (sample.length === 0) return [0, 1];
-
             sample.sort((a, b) => a - b);
             return sample;
         };
@@ -279,27 +157,13 @@
 
         const createTiffSource = (width, height, rasters) => {
             const bands = normalizeRasters(rasters);
-            const refBand = bands[0];
-            const validThreshold = estimateValidThreshold(refBand);
-            const contentBox = findContentBox(refBand, width, height, validThreshold);
-
+            const validThreshold = estimateValidThreshold(bands[0]);
+            const contentBox = findContentBox(bands[0], width, height, validThreshold);
             const bandStats = bands.map((band, index) => {
                 const ignoreBelow = index === 3 ? -Infinity : validThreshold;
-                return {
-                    ignoreBelow,
-                    sortedSample: buildSortedSample(band, width, height, contentBox, ignoreBelow)
-                };
+                return { ignoreBelow, sortedSample: buildSortedSample(band, width, height, contentBox, ignoreBelow) };
             });
-
-            return {
-                kind: "tiff",
-                width,
-                height,
-                bands,
-                validThreshold,
-                contentBox,
-                bandStats
-            };
+            return { kind: "tiff", width, height, bands, validThreshold, contentBox, bandStats };
         };
 
         const renderBandTo8Bit = (band, stat, contrast, alphaMode = false) => {
@@ -308,56 +172,36 @@
             const hiRaw = percentileFromSorted(stat.sortedSample, alphaMode ? 100 : contrast.whitePct);
             const hi = hiRaw > lo ? hiRaw : lo + 1;
             const inv = 1 / (hi - lo);
-
             for (let i = 0; i < band.length; i++) {
                 const v = Number.isFinite(band[i]) ? band[i] : lo;
-
-                if (!alphaMode && v <= stat.ignoreBelow) {
-                    out[i] = 0;
-                    continue;
-                }
-
+                if (!alphaMode && v <= stat.ignoreBelow) { out[i] = 0; continue; }
                 let t = clamp((v - lo) * inv, 0, 1);
                 if (!alphaMode) t = Math.pow(t, contrast.gamma);
                 out[i] = Math.round(t * 255);
             }
-
             return out;
         };
 
         const renderTiffSourceToCanvas = (source, contrast) => {
             const canvas = document.createElement("canvas");
-            canvas.width = source.width;
-            canvas.height = source.height;
-
+            canvas.width = source.width; canvas.height = source.height;
             const ctx = canvas.getContext("2d");
             const imageData = ctx.createImageData(source.width, source.height);
             const rgba = imageData.data;
-
             if (source.bands.length === 1) {
                 const gray = renderBandTo8Bit(source.bands[0], source.bandStats[0], contrast, false);
                 for (let i = 0, j = 0; i < gray.length; i++, j += 4) {
-                    rgba[j] = gray[i];
-                    rgba[j + 1] = gray[i];
-                    rgba[j + 2] = gray[i];
-                    rgba[j + 3] = 255;
+                    rgba[j] = gray[i]; rgba[j + 1] = gray[i]; rgba[j + 2] = gray[i]; rgba[j + 3] = 255;
                 }
             } else {
                 const r = renderBandTo8Bit(source.bands[0], source.bandStats[0], contrast, false);
                 const g = renderBandTo8Bit(source.bands[1] || source.bands[0], source.bandStats[1] || source.bandStats[0], contrast, false);
                 const b = renderBandTo8Bit(source.bands[2] || source.bands[0], source.bandStats[2] || source.bandStats[0], contrast, false);
-                const a = source.bands[3]
-                    ? renderBandTo8Bit(source.bands[3], source.bandStats[3], LINEAR_DISPLAY, true)
-                    : null;
-
+                const a = source.bands[3] ? renderBandTo8Bit(source.bands[3], source.bandStats[3], LINEAR_DISPLAY, true) : null;
                 for (let i = 0, j = 0; i < r.length; i++, j += 4) {
-                    rgba[j] = r[i];
-                    rgba[j + 1] = g[i];
-                    rgba[j + 2] = b[i];
-                    rgba[j + 3] = a ? a[i] : 255;
+                    rgba[j] = r[i]; rgba[j + 1] = g[i]; rgba[j + 2] = b[i]; rgba[j + 3] = a ? a[i] : 255;
                 }
             }
-
             ctx.putImageData(imageData, 0, 0);
             return canvas;
         };
@@ -376,12 +220,8 @@
             const [image, setImage] = React.useState(null);
             const [zoomLevel, setZoomLevel] = React.useState(1.0);
             const [zoomInputText, setZoomInputText] = React.useState("100");
-
-            // ✦ 新增：标记点视觉大小独立倍率（与 STEM 缩放解耦）
             const [atomScale, setAtomScale] = React.useState(1.0);
-            // ✦ 新增：是否启用"视觉恒定大小"自动补偿（开启后 atomScale = 1/zoomLevel）
             const [autoCompensate, setAutoCompensate] = React.useState(false);
-
             const [contrast, setContrast] = React.useState({ ...DISPLAY_DEFAULTS });
 
             const [manualAtoms, setManualAtoms] = React.useState(() => JSON.parse(localStorage.getItem("mos2_manual_v32")) || []);
@@ -396,25 +236,47 @@
             const [editingDomain, setEditingDomain] = React.useState(null);
             const [history, setHistory] = React.useState([]);
             const [message, setMessage] = React.useState(null);
-
             const [isDragging, setIsDragging] = React.useState(false);
             const [dragStart, setDragStart] = React.useState(null);
             const [selectionStart, setSelectionStart] = React.useState(null);
             const [selectionEnd, setSelectionEnd] = React.useState(null);
 
             const canvasRef = React.useRef(null);
-
             const isTiffLoaded = imageSource && imageSource.kind === "tiff";
+            const effectiveAtomScale = autoCompensate ? clamp(1 / zoomLevel, ATOM_SCALE_MIN, ATOM_SCALE_MAX) : atomScale;
 
-            // ✦ 实际用于绘制原子的视觉倍率（自动补偿优先）
-            const effectiveAtomScale = autoCompensate
-                ? clamp(1 / zoomLevel, ATOM_SCALE_MIN, ATOM_SCALE_MAX)
-                : atomScale;
+            // ✦ 新增：KNN 智能自适应测距
+            const smartBaseRadius = React.useMemo(() => {
+                const allPoints = [
+                    ...manualAtoms,
+                    ...currentSeeds,
+                    ...domains.flatMap(d => d.atoms)
+                ];
+                if (allPoints.length < 2) return null;
+
+                let minDists = [];
+                // 采样最后标记的 50 个点以保证效率和近期操作适应性
+                const samples = allPoints.slice(-50);
+                for(let i=0; i<samples.length; i++) {
+                    let md = Infinity;
+                    for(let j=0; j<allPoints.length; j++) {
+                        if (samples[i].id === allPoints[j].id) continue;
+                        const d = Math.hypot(samples[i].x - allPoints[j].x, samples[i].y - allPoints[j].y);
+                        // 过滤掉低于 2px 的误触重叠点
+                        if(d > 2.0 && d < md) md = d;
+                    }
+                    if(md !== Infinity) minDists.push(md);
+                }
+                if (minDists.length === 0) return null;
+                minDists.sort((a,b) => a-b);
+                // 使用中位数保证稳定性，半径取相邻间距的 30% 呈现最佳包裹感
+                const medianDist = minDists[Math.floor(minDists.length / 2)];
+                return clamp(medianDist * 0.3, 1.0, 50);
+            }, [manualAtoms, currentSeeds, domains]);
 
             React.useEffect(() => {
                 if (viewMode !== "transform_ghost" && viewMode !== "transform_domain") {
-                    setGhostDomain(null);
-                    setEditingDomain(null);
+                    setGhostDomain(null); setEditingDomain(null);
                 }
                 if (viewMode !== "gb_mask" && viewMode !== "domain_boundary" && viewMode !== "seed" && !viewMode.startsWith("transform")) {
                     setCurrentPolygon(null);
@@ -429,42 +291,20 @@
             }, [manualAtoms, gbMasks, domains, currentSeeds]);
 
             React.useEffect(() => {
-                if (!imageSource) {
-                    setImage(null);
-                    return;
-                }
-
-                if (imageSource.kind === "bitmap") {
-                    setImage(imageSource.element);
-                    return;
-                }
-
-                try {
-                    const rendered = renderTiffSourceToCanvas(imageSource, contrast);
-                    setImage(rendered);
-                } catch (err) {
-                    console.error(err);
-                }
+                if (!imageSource) { setImage(null); return; }
+                if (imageSource.kind === "bitmap") { setImage(imageSource.element); return; }
+                try { setImage(renderTiffSourceToCanvas(imageSource, contrast)); } catch (err) { console.error(err); }
             }, [imageSource, contrast]);
 
-            // ✦ 同步缩放输入框文本
-            React.useEffect(() => {
-                setZoomInputText(Math.round(zoomLevel * 100).toString());
-            }, [zoomLevel]);
+            React.useEffect(() => { setZoomInputText(Math.round(zoomLevel * 100).toString()); }, [zoomLevel]);
 
-            const showMsg = (txt) => {
-                setMessage(txt);
-                setTimeout(() => setMessage(null), 3000);
-            };
-
+            const showMsg = (txt) => { setMessage(txt); setTimeout(() => setMessage(null), 3000); };
             const restoreProgress = () => {
                 const sM = localStorage.getItem("mos2_manual_v32");
                 if (sM) {
-                    setManualAtoms(JSON.parse(sM) || []);
-                    setGbMasks(JSON.parse(localStorage.getItem("mos2_masks_v32")) || []);
-                    setDomains(JSON.parse(localStorage.getItem("mos2_domains_v32")) || []);
-                    setCurrentSeeds(JSON.parse(localStorage.getItem("mos2_seeds_v32")) || []);
-                    showMsg("历史数据 V32 已恢复");
+                    setManualAtoms(JSON.parse(sM) || []); setGbMasks(JSON.parse(localStorage.getItem("mos2_masks_v32")) || []);
+                    setDomains(JSON.parse(localStorage.getItem("mos2_domains_v32")) || []); setCurrentSeeds(JSON.parse(localStorage.getItem("mos2_seeds_v32")) || []);
+                    showMsg("历史数据已恢复");
                 }
             };
 
@@ -476,199 +316,119 @@
             const undo = () => {
                 if (history.length === 0) return;
                 const last = JSON.parse(history[0]);
-                setManualAtoms(last.manualAtoms || []);
-                setGbMasks(last.gbMasks || []);
-                setDomains(last.domains || []);
-                setCurrentSeeds(last.currentSeeds || []);
+                setManualAtoms(last.manualAtoms || []); setGbMasks(last.gbMasks || []);
+                setDomains(last.domains || []); setCurrentSeeds(last.currentSeeds || []);
                 setHistory((prev) => prev.slice(1));
             };
 
             const getRealCoords = (e) => {
                 const rect = canvasRef.current.getBoundingClientRect();
-                return {
-                    x: (e.clientX - rect.left) / zoomLevel,
-                    y: (e.clientY - rect.top) / zoomLevel
-                };
+                return { x: (e.clientX - rect.left) / zoomLevel, y: (e.clientY - rect.top) / zoomLevel };
             };
 
-            // ✦ 缩放操作集中处理
-            const setZoomClamped = (z) => {
-                setZoomLevel(clamp(z, ZOOM_MIN, ZOOM_MAX));
-            };
-
+            const setZoomClamped = (z) => { setZoomLevel(clamp(z, ZOOM_MIN, ZOOM_MAX)); };
             const handleWheel = (e) => {
                 if (e.ctrlKey || e.metaKey) {
-                    e.preventDefault();
-                    setZoomClamped(zoomLevel * (e.deltaY > 0 ? 0.9 : 1.1));
+                    e.preventDefault(); setZoomClamped(zoomLevel * (e.deltaY > 0 ? 0.9 : 1.1));
                 }
             };
-
             const handleZoomInputCommit = () => {
                 const v = parseFloat(zoomInputText);
-                if (Number.isFinite(v) && v > 0) {
-                    setZoomClamped(v / 100);
-                } else {
-                    setZoomInputText(Math.round(zoomLevel * 100).toString());
-                }
+                if (Number.isFinite(v) && v > 0) setZoomClamped(v / 100);
+                else setZoomInputText(Math.round(zoomLevel * 100).toString());
             };
 
             const handleImageUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 try {
                     const isTiff = /\.tiff?$/i.test(file.name) || file.type === "image/tiff";
-
                     if (isTiff) {
                         showMsg("正在解码 TIFF...");
                         const source = await loadTiffSourceFromFile(file);
-                        setContrast({ ...DISPLAY_DEFAULTS });
-                        setImageSource(source);
-                        setZoomLevel(1.0);
+                        setContrast({ ...DISPLAY_DEFAULTS }); setImageSource(source); setZoomLevel(1.0);
                         showMsg(`TIFF 已载入：${source.width} × ${source.height}`);
                         return;
                     }
-
                     const url = URL.createObjectURL(file);
                     const img = new Image();
                     img.onload = () => {
-                        setContrast({ ...DISPLAY_DEFAULTS });
-                        setImageSource({ kind: "bitmap", element: img });
-                        setZoomLevel(1.0);
-                        URL.revokeObjectURL(url);
-                        showMsg(`图像已载入：${img.width} × ${img.height}`);
+                        setContrast({ ...DISPLAY_DEFAULTS }); setImageSource({ kind: "bitmap", element: img }); setZoomLevel(1.0);
+                        URL.revokeObjectURL(url); showMsg(`图像已载入：${img.width} × ${img.height}`);
                     };
-                    img.onerror = () => {
-                        URL.revokeObjectURL(url);
-                        showMsg("图片加载失败");
-                    };
+                    img.onerror = () => { URL.revokeObjectURL(url); showMsg("图片加载失败"); };
                     img.src = url;
-                } catch (err) {
-                    console.error(err);
-                    showMsg(`TIFF 载入失败: ${err.message}`);
-                } finally {
-                    e.target.value = "";
-                }
+                } catch (err) { console.error(err); showMsg(`TIFF 载入失败: ${err.message}`); } finally { e.target.value = ""; }
             };
 
             const handleCifImport = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const lines = event.target.result.split("\n");
-                    let cell = { a: 1, b: 1, c: 20 };
-                    let rawAtoms = [];
-                    let loopCols = [];
-                    let inLoop = false;
-
+                    let cell = { a: 1, b: 1, c: 20 }, rawAtoms = [], loopCols = [], inLoop = false;
                     lines.forEach((line) => {
                         const l = line.trim();
                         if (l.includes("_cell_length_a")) cell.a = parseFloat(l.split(/\s+/).pop());
                         if (l.includes("_cell_length_b")) cell.b = parseFloat(l.split(/\s+/).pop());
-                        if (l === "loop_") {
-                            inLoop = true;
-                            loopCols = [];
-                            return;
-                        }
-                        if (inLoop && l.startsWith("_atom_site_")) {
-                            loopCols.push(l);
-                            return;
-                        }
+                        if (l === "loop_") { inLoop = true; loopCols = []; return; }
+                        if (inLoop && l.startsWith("_atom_site_")) { loopCols.push(l); return; }
                         if (inLoop && l && !l.startsWith("_")) {
                             const parts = l.split(/\s+/);
                             const getIdx = (k) => loopCols.findIndex((c) => c.includes(k));
-                            const xIdx = getIdx("_fract_x");
-                            const yIdx = getIdx("_fract_y");
-                            const symIdx = getIdx("_type_symbol");
+                            const xIdx = getIdx("_fract_x"), yIdx = getIdx("_fract_y"), symIdx = getIdx("_type_symbol");
                             if (xIdx !== -1 && parts.length >= loopCols.length) {
-                                rawAtoms.push({
-                                    fx: parseFloat(parts[xIdx]),
-                                    fy: parseFloat(parts[yIdx]),
-                                    sym: parts[symIdx] || "S"
-                                });
+                                rawAtoms.push({ fx: parseFloat(parts[xIdx]), fy: parseFloat(parts[yIdx]), sym: parts[symIdx] || "S" });
                             }
                         }
                     });
-
                     const sites = new Map();
                     rawAtoms.forEach((a) => {
                         const key = `${a.fx.toFixed(4)}|${a.fy.toFixed(4)}`;
                         if (!sites.has(key)) sites.set(key, { fx: a.fx, fy: a.fy, syms: [] });
                         sites.get(key).syms.push(a.sym);
                     });
-
                     const finalAtoms = [];
                     sites.forEach((site) => {
                         const isMo = site.syms.some((s) => s.startsWith("M"));
                         const type = isMo ? "Mo" : site.syms.length >= 2 ? "S2" : "S1";
                         finalAtoms.push({
-                            x: (site.fx * cell.a) / SCALE_DEFAULT,
-                            y: (site.fy * cell.b) / SCALE_DEFAULT,
-                            type,
-                            id: `im-${Date.now()}-${Math.random()}`
+                            x: (site.fx * cell.a) / SCALE_DEFAULT, y: (site.fy * cell.b) / SCALE_DEFAULT,
+                            type, id: `im-${Date.now()}-${Math.random()}`
                         });
                     });
-
                     if (finalAtoms.length > 0) {
                         pushHistory();
-                        setManualAtoms((prev) => [
-                            ...prev,
-                            ...finalAtoms.filter((a) => !prev.some((p) => Math.sqrt((p.x - a.x) ** 2 + (p.y - a.y) ** 2) < 2))
-                        ]);
+                        setManualAtoms((prev) => [...prev, ...finalAtoms.filter((a) => !prev.some((p) => Math.sqrt((p.x - a.x) ** 2 + (p.y - a.y) ** 2) < 2))]);
                         showMsg("已载入结构：成功还原特征颜色");
                     }
                 };
-
                 reader.readAsText(file);
             };
 
             const performExtrapolation = () => {
-                if (currentSeeds.length < 6 || !currentPolygon) {
-                    showMsg("请确保已连点 6 个种子并闭合了区域");
-                    return;
-                }
-
-                const mos = currentSeeds.slice(0, 3);
-                const sRefs = currentSeeds.slice(3, 6);
-                const o = mos[0];
-                const v1 = { x: mos[1].x - o.x, y: mos[1].y - o.y };
-                const v2 = { x: mos[2].x - o.x, y: mos[2].y - o.y };
+                if (currentSeeds.length < 6 || !currentPolygon) { showMsg("请确保已连点 6 个种子并闭合了区域"); return; }
+                const mos = currentSeeds.slice(0, 3), sRefs = currentSeeds.slice(3, 6);
+                const o = mos[0], v1 = { x: mos[1].x - o.x, y: mos[1].y - o.y }, v2 = { x: mos[2].x - o.x, y: mos[2].y - o.y };
                 const det = v1.x * v2.y - v1.y * v2.x;
                 if (Math.abs(det) < 0.1) return;
-
                 const sLocal = sRefs.map((s) => {
-                    const dx = s.x - o.x;
-                    const dy = s.y - o.y;
-                    const i = (dx * v2.y - dy * v2.x) / det;
-                    const j = (v1.x * dy - v1.y * dx) / det;
-                    return {
-                        x: dx - (Math.round(i) * v1.x + Math.round(j) * v2.x),
-                        y: dy - (Math.round(i) * v1.y + Math.round(j) * v2.y)
-                    };
+                    const dx = s.x - o.x, dy = s.y - o.y;
+                    const i = (dx * v2.y - dy * v2.x) / det, j = (v1.x * dy - v1.y * dx) / det;
+                    return { x: dx - (Math.round(i) * v1.x + Math.round(j) * v2.x), y: dy - (Math.round(i) * v1.y + Math.round(j) * v2.y) };
                 });
-
                 const avgS = sLocal.reduce((acc, cur) => ({ x: acc.x + cur.x, y: acc.y + cur.y }), { x: 0, y: 0 });
-                avgS.x /= 3;
-                avgS.y /= 3;
-
+                avgS.x /= 3; avgS.y /= 3;
                 const genAtoms = [];
                 for (let i = -150; i < 150; i++) {
                     for (let j = -150; j < 150; j++) {
-                        const mx = i * v1.x + j * v2.x;
-                        const my = i * v1.y + j * v2.y;
+                        const mx = i * v1.x + j * v2.x, my = i * v1.y + j * v2.y;
                         genAtoms.push({ x: mx, y: my, type: "Mo", id: `m-${i}-${j}-${Date.now()}` });
                         genAtoms.push({ x: mx + avgS.x, y: my + avgS.y, type: "S2", id: `s-${i}-${j}-${Date.now()}` });
                     }
                 }
-
-                setGhostDomain({
-                    atoms: genAtoms,
-                    boundary: currentPolygon.points,
-                    transform: { x: o.x, y: o.y, scale: 1.0, rot: 0.0 },
-                    name: `晶粒 ${domains.length + 1}`
-                });
+                setGhostDomain({ atoms: genAtoms, boundary: currentPolygon.points, transform: { x: o.x, y: o.y, scale: 1.0, rot: 0.0 }, name: `晶粒 ${domains.length + 1}` });
                 setViewMode("transform_ghost");
             };
 
@@ -678,37 +438,19 @@
                 const { x, y, scale, rot } = data.transform;
                 const rad = (rot * Math.PI) / 180;
                 const source = target === "ghost" ? data.atoms : data.originalAtoms;
-
-                const finalized = source
-                    .map((a) => {
-                        const rx = a.x * Math.cos(rad) - a.y * Math.sin(rad);
-                        const ry = a.x * Math.sin(rad) + a.y * Math.cos(rad);
-                        return { ...a, x: rx * scale + x, y: ry * scale + y };
-                    })
-                    .filter(
-                        (a) =>
-                            isPointInPolygon(a.x, a.y, data.boundary) &&
-                            !gbMasks.some((m) => isPointInPolygon(a.x, a.y, m.points))
-                    );
+                const finalized = source.map((a) => {
+                    const rx = a.x * Math.cos(rad) - a.y * Math.sin(rad);
+                    const ry = a.x * Math.sin(rad) + a.y * Math.cos(rad);
+                    return { ...a, x: rx * scale + x, y: ry * scale + y };
+                }).filter((a) => isPointInPolygon(a.x, a.y, data.boundary) && !gbMasks.some((m) => isPointInPolygon(a.x, a.y, m.points)));
 
                 if (target === "ghost") {
-                    setDomains([
-                        ...domains,
-                        {
-                            id: Date.now(),
-                            name: data.name,
-                            atoms: finalized,
-                            boundary: data.boundary
-                        }
-                    ]);
-                    setGhostDomain(null);
-                    setCurrentPolygon(null);
-                    setCurrentSeeds([]);
+                    setDomains([...domains, { id: Date.now(), name: data.name, atoms: finalized, boundary: data.boundary }]);
+                    setGhostDomain(null); setCurrentPolygon(null); setCurrentSeeds([]);
                 } else {
                     setDomains((prev) => prev.map((d) => (d.id === editingDomain.id ? { ...d, atoms: finalized } : d)));
                     setEditingDomain(null);
                 }
-
                 setViewMode("edit");
             };
 
@@ -725,32 +467,16 @@
                 const anchor = domain.atoms.length > 0 ? getCentroid(domain.atoms) : getCentroid(domain.boundary);
                 setEditingDomain({
                     ...domain,
-                    originalAtoms: domain.atoms.map((a) => ({
-                        ...a,
-                        x: a.x - anchor.x,
-                        y: a.y - anchor.y
-                    })),
-                    transform: {
-                        x: anchor.x,
-                        y: anchor.y,
-                        scale: 1.0,
-                        rot: 0.0
-                    }
+                    originalAtoms: domain.atoms.map((a) => ({ ...a, x: a.x - anchor.x, y: a.y - anchor.y })),
+                    transform: { x: anchor.x, y: anchor.y, scale: 1.0, rot: 0.0 }
                 });
-                setGhostDomain(null);
-                setViewMode("transform_domain");
+                setGhostDomain(null); setViewMode("transform_domain");
             };
 
             const handleMouseDown = (e) => {
                 const { x, y } = getRealCoords(e);
-                if (viewMode.startsWith("transform")) {
-                    setIsDragging(true);
-                    setDragStart({ x, y });
-                } else if (viewMode === "delete_area") {
-                    setIsDragging(true);
-                    setSelectionStart({ x, y });
-                    setSelectionEnd({ x, y });
-                }
+                if (viewMode.startsWith("transform")) { setIsDragging(true); setDragStart({ x, y }); }
+                else if (viewMode === "delete_area") { setIsDragging(true); setSelectionStart({ x, y }); setSelectionEnd({ x, y }); }
             };
 
             const handleMouseMove = (e) => {
@@ -758,31 +484,21 @@
                 if (isDragging) {
                     if (viewMode.startsWith("transform")) {
                         const target = viewMode === "transform_ghost" ? "ghost" : "domain";
-                        adjustTransform(target, "x", x - dragStart.x);
-                        adjustTransform(target, "y", y - dragStart.y);
+                        adjustTransform(target, "x", x - dragStart.x); adjustTransform(target, "y", y - dragStart.y);
                         setDragStart({ x, y });
-                    } else if (viewMode === "delete_area") {
-                        setSelectionEnd({ x, y });
-                    }
+                    } else if (viewMode === "delete_area") { setSelectionEnd({ x, y }); }
                 }
             };
 
             const handleMouseUp = () => {
                 if (isDragging && viewMode === "delete_area" && selectionStart && selectionEnd) {
                     pushHistory();
-
-                    const x1 = Math.min(selectionStart.x, selectionEnd.x);
-                    const y1 = Math.min(selectionStart.y, selectionEnd.y);
-                    const x2 = Math.max(selectionStart.x, selectionEnd.x);
-                    const y2 = Math.max(selectionStart.y, selectionEnd.y);
+                    const x1 = Math.min(selectionStart.x, selectionEnd.x), y1 = Math.min(selectionStart.y, selectionEnd.y);
+                    const x2 = Math.max(selectionStart.x, selectionEnd.x), y2 = Math.max(selectionStart.y, selectionEnd.y);
                     const inBox = (p) => p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2;
-
-                    setManualAtoms((prev) => prev.filter((a) => !inBox(a)));
-                    setCurrentSeeds((prev) => prev.filter((s) => !inBox(s)));
+                    setManualAtoms((prev) => prev.filter((a) => !inBox(a))); setCurrentSeeds((prev) => prev.filter((s) => !inBox(s)));
                     setDomains((prev) => prev.map((d) => ({ ...d, atoms: d.atoms.filter((a) => !inBox(a)) })));
-
-                    setSelectionStart(null);
-                    setSelectionEnd(null);
+                    setSelectionStart(null); setSelectionEnd(null);
                 }
                 setIsDragging(false);
             };
@@ -790,113 +506,71 @@
             const handleCanvasClick = (e) => {
                 if (viewMode.startsWith("transform") || viewMode === "delete_area" || isDragging) return;
                 const { x, y } = getRealCoords(e);
-
                 if (viewMode === "gb_mask" || viewMode === "domain_boundary") {
-                    if (!currentPolygon) {
-                        setCurrentPolygon({ points: [{ x, y }] });
-                    } else {
-                        if (
-                            Math.sqrt((x - currentPolygon.points[0].x) ** 2 + (y - currentPolygon.points[0].y) ** 2) < 15 / zoomLevel &&
-                            currentPolygon.points.length >= 3
-                        ) {
+                    if (!currentPolygon) setCurrentPolygon({ points: [{ x, y }] });
+                    else {
+                        if (Math.sqrt((x - currentPolygon.points[0].x) ** 2 + (y - currentPolygon.points[0].y) ** 2) < 15 / zoomLevel && currentPolygon.points.length >= 3) {
                             pushHistory();
-                            if (viewMode === "gb_mask") {
-                                setGbMasks([...gbMasks, { id: Date.now(), points: currentPolygon.points }]);
-                                setCurrentPolygon(null);
-                            } else {
-                                setViewMode("seed");
-                            }
-                        } else {
-                            setCurrentPolygon({
-                                ...currentPolygon,
-                                points: [...currentPolygon.points, { x, y }]
-                            });
-                        }
+                            if (viewMode === "gb_mask") { setGbMasks([...gbMasks, { id: Date.now(), points: currentPolygon.points }]); setCurrentPolygon(null); }
+                            else setViewMode("seed");
+                        } else setCurrentPolygon({ ...currentPolygon, points: [...currentPolygon.points, { x, y }] });
                     }
                 } else if (viewMode === "seed") {
-                    if (currentSeeds.length < 6) {
-                        setCurrentSeeds([
-                            ...currentSeeds,
-                            {
-                                x,
-                                y,
-                                type: currentSeeds.length < 3 ? "Mo" : "S2",
-                                id: Date.now()
-                            }
-                        ]);
-                    }
+                    if (currentSeeds.length < 6) setCurrentSeeds([...currentSeeds, { x, y, type: currentSeeds.length < 3 ? "Mo" : "S2", id: Date.now() }]);
                 } else if (viewMode === "edit") {
-                    pushHistory();
-                    setManualAtoms([...manualAtoms, { x, y, type: selectedType, id: Date.now() }]);
+                    pushHistory(); setManualAtoms([...manualAtoms, { x, y, type: selectedType, id: Date.now() }]);
                 } else if (viewMode === "delete") {
                     pushHistory();
                     const dSq = (p) => (p.x - x) ** 2 + (p.y - y) ** 2;
-                    setManualAtoms((prev) => prev.filter((a) => dSq(a) > 100));
-                    setCurrentSeeds((prev) => prev.filter((s) => dSq(s) > 100));
+                    setManualAtoms((prev) => prev.filter((a) => dSq(a) > 100)); setCurrentSeeds((prev) => prev.filter((s) => dSq(s) > 100));
                     setDomains((prev) => prev.map((d) => ({ ...d, atoms: d.atoms.filter((a) => dSq(a) > 64) })));
                 }
             };
 
             React.useEffect(() => {
                 if (!image || !canvasRef.current) return;
-
                 const ctx = canvasRef.current.getContext("2d");
                 ctx.clearRect(0, 0, image.width, image.height);
                 ctx.drawImage(image, 0, 0);
 
-                // ✦ 所有原子半径都乘 effectiveAtomScale
-                const rManual = 6 * effectiveAtomScale;
-                const rDomain = 4 * effectiveAtomScale;
-                const rSeed = 8 * effectiveAtomScale;
-                const rPreview = 4 * effectiveAtomScale;
-                const lwManual = Math.max(0.5, 1.5 * effectiveAtomScale);
-                const lwSeed = Math.max(0.5, 2 * effectiveAtomScale);
+                // ✦ 自适应基准计算：若点太少则逆向放大器维持小点，足够后自动锁定真实物理间隙
+                const fallbackRadius = clamp(8 / zoomLevel, 1.5, 10);
+                const baseR = smartBaseRadius !== null ? smartBaseRadius : fallbackRadius;
+
+                // ✦ 新体系下的自适应尺寸分配
+                const rManual = baseR * effectiveAtomScale;
+                const rDomain = baseR * 0.8 * effectiveAtomScale;
+                const rSeed = baseR * 1.2 * effectiveAtomScale;
+                const rPreview = baseR * 0.8 * effectiveAtomScale;
+                const lwManual = Math.max(0.5, baseR * 0.15 * effectiveAtomScale);
+                const lwSeed = Math.max(0.5, baseR * 0.2 * effectiveAtomScale);
 
                 gbMasks.forEach((mask) => {
-                    ctx.beginPath();
-                    ctx.moveTo(mask.points[0].x, mask.points[0].y);
-                    mask.points.forEach((p) => ctx.lineTo(p.x, p.y));
-                    ctx.closePath();
-                    ctx.fillStyle = ATOM_COLORS.GBMask;
-                    ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(mask.points[0].x, mask.points[0].y); mask.points.forEach((p) => ctx.lineTo(p.x, p.y));
+                    ctx.closePath(); ctx.fillStyle = ATOM_COLORS.GBMask; ctx.fill();
                 });
 
                 domains.forEach((d) => {
                     if (editingDomain && editingDomain.id === d.id) return;
-
                     d.atoms.forEach((a) => {
-                        ctx.beginPath();
-                        ctx.arc(a.x, a.y, rDomain, 0, Math.PI * 2);
-                        ctx.fillStyle = ATOM_COLORS[a.type] + "aa";
-                        ctx.fill();
+                        ctx.beginPath(); ctx.arc(a.x, a.y, rDomain, 0, Math.PI * 2);
+                        ctx.fillStyle = ATOM_COLORS[a.type] + "aa"; ctx.fill();
                     });
-
-                    ctx.beginPath();
-                    ctx.moveTo(d.boundary[0].x, d.boundary[0].y);
-                    d.boundary.forEach((p) => ctx.lineTo(p.x, p.y));
-                    ctx.closePath();
-                    ctx.strokeStyle = "rgba(255,255,255,0.1)";
-                    ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(d.boundary[0].x, d.boundary[0].y); d.boundary.forEach((p) => ctx.lineTo(p.x, p.y));
+                    ctx.closePath(); ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.stroke();
                 });
 
                 const drawPreview = (data) => {
-                    const { x, y, scale, rot } = data.transform;
-                    const rad = (rot * Math.PI) / 180;
+                    const { x, y, scale, rot } = data.transform; const rad = (rot * Math.PI) / 180;
                     const source = data.atoms || data.originalAtoms;
-
-                    ctx.save();
-                    ctx.translate(x, y);
-                    ctx.rotate(rad);
-
+                    ctx.save(); ctx.translate(x, y); ctx.rotate(rad);
                     source.forEach((a) => {
                         const rx = (a.x * Math.cos(rad) - a.y * Math.sin(rad)) * scale + x;
                         const ry = (a.x * Math.sin(rad) + a.y * Math.cos(rad)) * scale + y;
-                        ctx.beginPath();
-                        ctx.arc(a.x * scale, a.y * scale, rPreview, 0, Math.PI * 2);
+                        ctx.beginPath(); ctx.arc(a.x * scale, a.y * scale, rPreview, 0, Math.PI * 2);
                         ctx.fillStyle = isPointInPolygon(rx, ry, data.boundary) ? ATOM_COLORS[a.type] : "rgba(255,255,255,0.05)";
                         ctx.fill();
                     });
-
                     ctx.restore();
                 };
 
@@ -904,84 +578,44 @@
                 if (editingDomain) drawPreview(editingDomain);
 
                 manualAtoms.forEach((a) => {
-                    ctx.beginPath();
-                    ctx.arc(a.x, a.y, rManual, 0, Math.PI * 2);
+                    ctx.beginPath(); ctx.arc(a.x, a.y, rManual, 0, Math.PI * 2);
                     ctx.fillStyle = ATOM_COLORS[a.type];
+                    ctx.globalAlpha = 0.85; // ✦ 注入 85% 透明度，避免完全死黑遮挡图像
                     ctx.fill();
-                    ctx.strokeStyle = "#fff";
-                    ctx.lineWidth = lwManual;
-                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = lwManual; ctx.stroke();
                 });
 
                 if (currentPolygon) {
-                    ctx.beginPath();
-                    ctx.moveTo(currentPolygon.points[0].x, currentPolygon.points[0].y);
-                    currentPolygon.points.forEach((p) => ctx.lineTo(p.x, p.y));
-                    if (viewMode === "seed" || viewMode.includes("transform")) {
-                        ctx.closePath();
-                        ctx.strokeStyle = "#3b82f6";
-                        ctx.setLineDash([]);
-                    } else {
-                        ctx.strokeStyle = "#fff";
-                        ctx.setLineDash([5, 5]);
-                    }
-                    ctx.stroke();
-                    ctx.setLineDash([]);
+                    ctx.beginPath(); ctx.moveTo(currentPolygon.points[0].x, currentPolygon.points[0].y); currentPolygon.points.forEach((p) => ctx.lineTo(p.x, p.y));
+                    if (viewMode === "seed" || viewMode.includes("transform")) { ctx.closePath(); ctx.strokeStyle = "#3b82f6"; ctx.setLineDash([]); }
+                    else { ctx.strokeStyle = "#fff"; ctx.setLineDash([5, 5]); }
+                    ctx.stroke(); ctx.setLineDash([]);
                 }
 
                 currentSeeds.forEach((s) => {
-                    ctx.beginPath();
-                    ctx.arc(s.x, s.y, rSeed, 0, Math.PI * 2);
+                    ctx.beginPath(); ctx.arc(s.x, s.y, rSeed, 0, Math.PI * 2);
                     ctx.fillStyle = ATOM_COLORS[s.type];
+                    ctx.globalAlpha = 0.85; // ✦ 种子同理
                     ctx.fill();
-                    ctx.strokeStyle = "#fff";
-                    ctx.lineWidth = lwSeed;
-                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = lwSeed; ctx.stroke();
                 });
 
                 if (isDragging && selectionStart && selectionEnd) {
-                    ctx.strokeStyle = "#ef4444";
-                    ctx.setLineDash([2, 2]);
-                    ctx.strokeRect(
-                        selectionStart.x,
-                        selectionStart.y,
-                        selectionEnd.x - selectionStart.x,
-                        selectionEnd.y - selectionStart.y
-                    );
+                    ctx.strokeStyle = "#ef4444"; ctx.setLineDash([2, 2]);
+                    ctx.strokeRect(selectionStart.x, selectionStart.y, selectionEnd.x - selectionStart.x, selectionEnd.y - selectionStart.y);
                     ctx.fillStyle = "rgba(239, 68, 68, 0.1)";
-                    ctx.fillRect(
-                        selectionStart.x,
-                        selectionStart.y,
-                        selectionEnd.x - selectionStart.x,
-                        selectionEnd.y - selectionStart.y
-                    );
+                    ctx.fillRect(selectionStart.x, selectionStart.y, selectionEnd.x - selectionStart.x, selectionEnd.y - selectionStart.y);
                     ctx.setLineDash([]);
                 }
-            }, [
-                image,
-                manualAtoms,
-                gbMasks,
-                domains,
-                ghostDomain,
-                editingDomain,
-                currentPolygon,
-                currentSeeds,
-                selectionStart,
-                selectionEnd,
-                isDragging,
-                zoomLevel,
-                viewMode,
-                effectiveAtomScale
-            ]);
+            }, [ image, manualAtoms, gbMasks, domains, ghostDomain, editingDomain, currentPolygon, currentSeeds, selectionStart, selectionEnd, isDragging, zoomLevel, viewMode, effectiveAtomScale, smartBaseRadius ]);
 
             const exportFinalCIF = () => {
                 const all = [...manualAtoms, ...domains.flatMap((d) => d.atoms)];
                 if (all.length === 0) return;
-
-                const boxX = Math.max(...all.map((a) => a.x * SCALE_DEFAULT)) + 10;
-                const boxY = Math.max(...all.map((a) => a.y * SCALE_DEFAULT)) + 10;
-
-                let cif = `data_MoS2_V32
+                const boxX = Math.max(...all.map((a) => a.x * SCALE_DEFAULT)) + 10, boxY = Math.max(...all.map((a) => a.y * SCALE_DEFAULT)) + 10;
+                let cif = `data_MoS2_V33
 _cell_length_a ${boxX.toFixed(4)}
 _cell_length_b ${boxY.toFixed(4)}
 _cell_length_c 20.0
@@ -994,51 +628,20 @@ _atom_site_label
 _atom_site_type_symbol
 _atom_site_fract_x
 _atom_site_fract_y
-_atom_site_fract_z
-`;
-
+_atom_site_fract_z\n`;
                 all.forEach((a, i) => {
-                    const fx = (a.x * SCALE_DEFAULT) / boxX;
-                    const fy = (a.y * SCALE_DEFAULT) / boxY;
-
-                    if (a.type === "Mo") {
-                        cif += `Mo${i} Mo ${fx.toFixed(6)} ${fy.toFixed(6)} 0.500000\n`;
-                    } else if (a.type === "S2") {
-                        cif += `S${i}a S ${fx.toFixed(6)} ${fy.toFixed(6)} 0.578\n`;
-                        cif += `S${i}b S ${fx.toFixed(6)} ${fy.toFixed(6)} 0.422\n`;
-                    } else {
-                        cif += `S${i} S ${fx.toFixed(6)} ${fy.toFixed(6)} 0.578\n`;
-                    }
+                    const fx = (a.x * SCALE_DEFAULT) / boxX, fy = (a.y * SCALE_DEFAULT) / boxY;
+                    if (a.type === "Mo") cif += `Mo${i} Mo ${fx.toFixed(6)} ${fy.toFixed(6)} 0.500000\n`;
+                    else if (a.type === "S2") { cif += `S${i}a S ${fx.toFixed(6)} ${fy.toFixed(6)} 0.578\n`; cif += `S${i}b S ${fx.toFixed(6)} ${fy.toFixed(6)} 0.422\n`; }
+                    else cif += `S${i} S ${fx.toFixed(6)} ${fy.toFixed(6)} 0.578\n`;
                 });
-
-                const blob = new Blob([cif], { type: "text/plain" });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = "perfect_reconstructed.cif";
-                link.click();
+                const blob = new Blob([cif], { type: "text/plain" }), link = document.createElement("a");
+                link.href = URL.createObjectURL(blob); link.download = "perfect_reconstructed.cif"; link.click();
             };
 
-            const updateBlackPct = (value) => {
-                setContrast((prev) => ({
-                    ...prev,
-                    blackPct: Math.min(value, prev.whitePct - 0.1)
-                }));
-            };
-
-            const updateWhitePct = (value) => {
-                setContrast((prev) => ({
-                    ...prev,
-                    whitePct: Math.max(value, prev.blackPct + 0.1)
-                }));
-            };
-
-            const updateGamma = (value) => {
-                setContrast((prev) => ({
-                    ...prev,
-                    gamma: value
-                }));
-            };
-
+            const updateBlackPct = (v) => setContrast((p) => ({ ...p, blackPct: Math.min(v, p.whitePct - 0.1) }));
+            const updateWhitePct = (v) => setContrast((p) => ({ ...p, whitePct: Math.max(v, p.blackPct + 0.1) }));
+            const updateGamma = (v) => setContrast((p) => ({ ...p, gamma: v }));
             const currentTransformTarget = viewMode === "transform_ghost" ? ghostDomain : editingDomain;
 
             return (
@@ -1046,262 +649,100 @@ _atom_site_fract_z
                     <div className="flex items-center justify-between px-6 py-3 bg-[#0f172a] border-b border-slate-800 shadow-2xl z-30">
                         <div className="flex items-center gap-6">
                             <h1 className="text-xl font-black tracking-tighter flex items-center gap-2 text-blue-400 italic">
-                                <Icon name="layers" size={22} className="text-blue-500" />
-                                MoS2 PRECISION V33
+                                <Icon name="layers" size={22} className="text-blue-500" /> MoS2 PRECISION V33
                             </h1>
-
                             <div className="flex gap-2">
-                                <button onClick={undo} className="p-2 bg-slate-800/50 hover:bg-slate-700 rounded transition border border-slate-700" title="撤回">
-                                    <Icon name="undo-2" />
-                                </button>
-                                <button onClick={restoreProgress} className="p-2 bg-blue-900/30 hover:bg-blue-800 rounded transition border border-blue-800 text-blue-300 flex items-center gap-2 px-3 text-xs font-bold">
-                                    <Icon name="history" size={16} />
-                                    恢复上次进度
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        if (confirm("重置？")) {
-                                            localStorage.clear();
-                                            window.location.reload();
-                                        }
-                                    }}
-                                    className="p-2 hover:bg-red-900/40 rounded text-red-400"
-                                    title="清空"
-                                >
-                                    <Icon name="rotate-ccw" />
-                                </button>
+                                <button onClick={undo} className="p-2 bg-slate-800/50 hover:bg-slate-700 rounded transition border border-slate-700" title="撤回"><Icon name="undo-2" /></button>
+                                <button onClick={restoreProgress} className="p-2 bg-blue-900/30 hover:bg-blue-800 rounded transition border border-blue-800 text-blue-300 flex items-center gap-2 px-3 text-xs font-bold"><Icon name="history" size={16} /> 恢复上次进度</button>
+                                <button onClick={() => { if (confirm("重置？")) { localStorage.clear(); window.location.reload(); } }} className="p-2 hover:bg-red-900/40 rounded text-red-400" title="清空"><Icon name="rotate-ccw" /></button>
                             </div>
                         </div>
-
                         <div className="flex gap-2">
-                            <label className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg cursor-pointer text-xs font-bold border border-slate-700 transition flex items-center gap-2">
-                                <Icon name="image" size={14} />
-                                1. 载入 STEM
-                                <input type="file" className="hidden" accept=".tif,.tiff,image/*" onChange={handleImageUpload} />
-                            </label>
-
-                            <label className="bg-indigo-900/40 hover:bg-indigo-800 px-4 py-2 rounded-lg cursor-pointer text-xs font-bold border border-indigo-700 transition flex items-center gap-2 text-indigo-300">
-                                <Icon name="file-digit" size={14} />
-                                2. 载入 CIF
-                                <input type="file" className="hidden" accept=".cif" onChange={handleCifImport} />
-                            </label>
-
+                            <label className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg cursor-pointer text-xs font-bold border border-slate-700 transition flex items-center gap-2"><Icon name="image" size={14} /> 1. 载入 STEM <input type="file" className="hidden" accept=".tif,.tiff,image/*" onChange={handleImageUpload} /></label>
+                            <label className="bg-indigo-900/40 hover:bg-indigo-800 px-4 py-2 rounded-lg cursor-pointer text-xs font-bold border border-indigo-700 transition flex items-center gap-2 text-indigo-300"><Icon name="file-digit" size={14} /> 2. 载入 CIF <input type="file" className="hidden" accept=".cif" onChange={handleCifImport} /></label>
                             <div className="h-8 w-px bg-slate-800 mx-1" />
-
-                            <button onClick={exportFinalCIF} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg transition">
-                                <Icon name="save" size={14} />
-                                导出 CIF
-                            </button>
+                            <button onClick={exportFinalCIF} className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg transition"><Icon name="save" size={14} /> 导出 CIF</button>
                         </div>
                     </div>
 
                     <div className="flex flex-1 overflow-hidden relative">
-                        {message && (
-                            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-2 rounded-full shadow-2xl font-bold text-sm animate-bounce">
-                                {message}
-                            </div>
-                        )}
+                        {message && <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-2 rounded-full shadow-2xl font-bold text-sm animate-bounce">{message}</div>}
 
                         <div className="w-80 bg-[#0f172a] border-r border-slate-800 flex flex-col p-5 gap-6 overflow-y-auto sidebar-scroll">
                             <section className="bg-slate-900/40 p-4 rounded-2xl border border-slate-800">
-                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 text-center border-b border-slate-800 pb-2">
-                                    0. 影像衬度
-                                </h2>
-
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 text-center border-b border-slate-800 pb-2">0. 影像衬度</h2>
                                 <div className={`space-y-5 ${isTiffLoaded ? "" : "opacity-50"}`}>
                                     <div>
-                                        <div className="flex justify-between text-[10px] mb-2 text-slate-400 font-bold">
-                                            <span>黑场</span>
-                                            <span>{contrast.blackPct.toFixed(1)}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="40"
-                                            step="0.1"
-                                            value={contrast.blackPct}
-                                            disabled={!isTiffLoaded}
-                                            onChange={(e) => updateBlackPct(parseFloat(e.target.value))}
-                                        />
+                                        <div className="flex justify-between text-[10px] mb-2 text-slate-400 font-bold"><span>黑场</span><span>{contrast.blackPct.toFixed(1)}%</span></div>
+                                        <input type="range" min="0" max="40" step="0.1" value={contrast.blackPct} disabled={!isTiffLoaded} onChange={(e) => updateBlackPct(parseFloat(e.target.value))} />
                                     </div>
-
                                     <div>
-                                        <div className="flex justify-between text-[10px] mb-2 text-slate-400 font-bold">
-                                            <span>白场</span>
-                                            <span>{contrast.whitePct.toFixed(1)}%</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="60"
-                                            max="100"
-                                            step="0.1"
-                                            value={contrast.whitePct}
-                                            disabled={!isTiffLoaded}
-                                            onChange={(e) => updateWhitePct(parseFloat(e.target.value))}
-                                        />
+                                        <div className="flex justify-between text-[10px] mb-2 text-slate-400 font-bold"><span>白场</span><span>{contrast.whitePct.toFixed(1)}%</span></div>
+                                        <input type="range" min="60" max="100" step="0.1" value={contrast.whitePct} disabled={!isTiffLoaded} onChange={(e) => updateWhitePct(parseFloat(e.target.value))} />
                                     </div>
-
                                     <div>
-                                        <div className="flex justify-between text-[10px] mb-2 text-slate-400 font-bold">
-                                            <span>伽马</span>
-                                            <span>{contrast.gamma.toFixed(2)}</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0.3"
-                                            max="3.0"
-                                            step="0.05"
-                                            value={contrast.gamma}
-                                            disabled={!isTiffLoaded}
-                                            onChange={(e) => updateGamma(parseFloat(e.target.value))}
-                                        />
+                                        <div className="flex justify-between text-[10px] mb-2 text-slate-400 font-bold"><span>伽马</span><span>{contrast.gamma.toFixed(2)}</span></div>
+                                        <input type="range" min="0.3" max="3.0" step="0.05" value={contrast.gamma} disabled={!isTiffLoaded} onChange={(e) => updateGamma(parseFloat(e.target.value))} />
                                     </div>
-
                                     <div className="flex gap-2">
-                                        <button
-                                            onClick={() => setContrast({ ...DISPLAY_DEFAULTS })}
-                                            disabled={!isTiffLoaded}
-                                            className="flex-1 py-2 rounded-lg text-[10px] font-bold border border-blue-700 bg-blue-900/30 text-blue-300 hover:bg-blue-800 disabled:opacity-50"
-                                        >
-                                            自动
-                                        </button>
-                                        <button
-                                            onClick={() => setContrast({ ...LINEAR_DISPLAY })}
-                                            disabled={!isTiffLoaded}
-                                            className="flex-1 py-2 rounded-lg text-[10px] font-bold border border-slate-700 bg-slate-800/70 text-slate-300 hover:bg-slate-700 disabled:opacity-50"
-                                        >
-                                            线性
-                                        </button>
+                                        <button onClick={() => setContrast({ ...DISPLAY_DEFAULTS })} disabled={!isTiffLoaded} className="flex-1 py-2 rounded-lg text-[10px] font-bold border border-blue-700 bg-blue-900/30 text-blue-300 hover:bg-blue-800 disabled:opacity-50">自动</button>
+                                        <button onClick={() => setContrast({ ...LINEAR_DISPLAY })} disabled={!isTiffLoaded} className="flex-1 py-2 rounded-lg text-[10px] font-bold border border-slate-700 bg-slate-800/70 text-slate-300 hover:bg-slate-700 disabled:opacity-50">线性</button>
                                     </div>
-
-                                    <p className="text-[10px] leading-4 text-slate-500">
-                                        {isTiffLoaded
-                                            ? "黑边已自动排除出统计。黑场升高可压暗背景，白场降低可压住过亮区域，伽马大于 1 会整体压暗中间灰。"
-                                            : "载入 TIFF 后这里会出现手动衬度控制。"}
-                                    </p>
+                                    <p className="text-[10px] leading-4 text-slate-500">{isTiffLoaded ? "黑边已自动排除出统计。黑场升高可压暗背景，白场降低可压住过亮区域，伽马大于 1 会整体压暗中间灰。" : "载入 TIFF 后这里会出现手动衬度控制。"}</p>
                                 </div>
                             </section>
 
                             <section>
-                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center border-b border-slate-800 pb-2">
-                                    1. 区域外推 (补全模式)
-                                </h2>
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center border-b border-slate-800 pb-2">1. 区域外推 (补全模式)</h2>
                                 <div className="space-y-2">
-                                    <button onClick={() => setViewMode("gb_mask")} className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition text-xs font-bold ${viewMode === "gb_mask" ? "tool-active" : "border-slate-800 bg-slate-900/40"}`}>
-                                        <Icon name="pen-tool" size={16} />
-                                        划定晶界禁区
-                                    </button>
-                                    <button onClick={() => setViewMode("domain_boundary")} className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition text-xs font-bold ${viewMode === "domain_boundary" ? "tool-active" : "border-slate-800 bg-slate-900/40"}`}>
-                                        <Icon name="grid-3x3" size={16} />
-                                        划定晶粒本征区
-                                    </button>
+                                    <button onClick={() => setViewMode("gb_mask")} className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition text-xs font-bold ${viewMode === "gb_mask" ? "tool-active" : "border-slate-800 bg-slate-900/40"}`}><Icon name="pen-tool" size={16} /> 划定晶界禁区</button>
+                                    <button onClick={() => setViewMode("domain_boundary")} className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition text-xs font-bold ${viewMode === "domain_boundary" ? "tool-active" : "border-slate-800 bg-slate-900/40"}`}><Icon name="grid-3x3" size={16} /> 划定晶粒本征区</button>
                                 </div>
                             </section>
 
                             {currentTransformTarget && (
                                 <section className="bg-blue-900/20 p-4 rounded-2xl border border-blue-500/40 animate-in fade-in">
-                                    <h2 className="text-xs font-black text-blue-400 uppercase mb-4 flex items-center gap-2">
-                                        <Icon name="sliders" size={14} />
-                                        局部取向精修
-                                    </h2>
-
+                                    <h2 className="text-xs font-black text-blue-400 uppercase mb-4 flex items-center gap-2"><Icon name="sliders" size={14} /> 局部取向精修</h2>
                                     <div className="space-y-6">
                                         <div>
-                                            <div className="flex justify-between text-[9px] mb-2 text-slate-400 uppercase tracking-tighter font-bold">
-                                                <span>旋转角度</span>
-                                                <span>{currentTransformTarget.transform.rot.toFixed(1)}°</span>
-                                            </div>
-                                            <input
-                                                type="range"
-                                                min="-180"
-                                                max="180"
-                                                step="0.5"
-                                                value={currentTransformTarget.transform.rot}
-                                                onChange={(e) => adjustTransform(viewMode.includes("ghost") ? "ghost" : "domain", "rot", parseFloat(e.target.value), true)}
-                                            />
+                                            <div className="flex justify-between text-[9px] mb-2 text-slate-400 uppercase tracking-tighter font-bold"><span>旋转角度</span><span>{currentTransformTarget.transform.rot.toFixed(1)}°</span></div>
+                                            <input type="range" min="-180" max="180" step="0.5" value={currentTransformTarget.transform.rot} onChange={(e) => adjustTransform(viewMode.includes("ghost") ? "ghost" : "domain", "rot", parseFloat(e.target.value), true)} />
                                         </div>
-
                                         <div>
-                                            <div className="flex justify-between text-[9px] mb-2 text-slate-400 uppercase tracking-tighter font-bold">
-                                                <span>缩放倍率</span>
-                                                <span>x{currentTransformTarget.transform.scale.toFixed(3)}</span>
-                                            </div>
-                                            <input
-                                                type="range"
-                                                min="0.5"
-                                                max="1.5"
-                                                step="0.005"
-                                                value={currentTransformTarget.transform.scale}
-                                                onChange={(e) => adjustTransform(viewMode.includes("ghost") ? "ghost" : "domain", "scale", parseFloat(e.target.value), true)}
-                                            />
+                                            <div className="flex justify-between text-[9px] mb-2 text-slate-400 uppercase tracking-tighter font-bold"><span>缩放倍率</span><span>x{currentTransformTarget.transform.scale.toFixed(3)}</span></div>
+                                            <input type="range" min="0.5" max="1.5" step="0.005" value={currentTransformTarget.transform.scale} onChange={(e) => adjustTransform(viewMode.includes("ghost") ? "ghost" : "domain", "scale", parseFloat(e.target.value), true)} />
                                         </div>
-
                                         <div className="flex flex-col gap-2">
-                                            <button onClick={() => finalizeTransform(viewMode.includes("ghost") ? "ghost" : "domain")} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xs transition flex items-center justify-center gap-2">
-                                                <Icon name="check-circle-2" size={16} />
-                                                确认并合并
-                                            </button>
-                                            <button onClick={() => setViewMode("edit")} className="w-full py-2 bg-red-900/20 text-red-400 rounded-xl text-[10px] font-bold text-center italic">
-                                                放弃本次操作
-                                            </button>
+                                            <button onClick={() => finalizeTransform(viewMode.includes("ghost") ? "ghost" : "domain")} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xs transition flex items-center justify-center gap-2"><Icon name="check-circle-2" size={16} /> 确认并合并</button>
+                                            <button onClick={() => setViewMode("edit")} className="w-full py-2 bg-red-900/20 text-red-400 rounded-xl text-[10px] font-bold text-center italic">放弃本次操作</button>
                                         </div>
                                     </div>
                                 </section>
                             )}
 
                             <section>
-                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 text-center border-b border-slate-800 pb-2">
-                                    2. 局部修补 (手动模式)
-                                </h2>
-
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 text-center border-b border-slate-800 pb-2">2. 局部修补 (手动模式)</h2>
                                 <div className="grid grid-cols-2 gap-2 mb-2">
-                                    <button onClick={() => setViewMode("edit")} className={`p-3 rounded-xl border-2 transition ${viewMode === "edit" ? "tool-active" : "border-slate-800"}`}>
-                                        <Icon name="plus" size={18} />
-                                        <span className="text-[9px] block mt-1 font-bold">手动补点</span>
-                                    </button>
-
-                                    <button onClick={() => setViewMode("delete")} className={`p-3 rounded-xl border-2 transition ${viewMode === "delete" ? "tool-active" : "border-slate-800"}`}>
-                                        <Icon name="mouse-pointer-2" size={18} />
-                                        <span className="text-[9px] block mt-1 font-bold">点消除</span>
-                                    </button>
-
-                                    <button onClick={() => setViewMode("delete_area")} className={`p-3 col-span-2 rounded-xl border-2 transition ${viewMode === "delete_area" ? "tool-active" : "border-slate-800"}`}>
-                                        <Icon name="square" size={18} className="mx-auto" />
-                                        <span className="text-[9px] block mt-1 font-black text-center uppercase tracking-tighter leading-tight">区域批量清除</span>
-                                    </button>
+                                    <button onClick={() => setViewMode("edit")} className={`p-3 rounded-xl border-2 transition ${viewMode === "edit" ? "tool-active" : "border-slate-800"}`}><Icon name="plus" size={18} /><span className="text-[9px] block mt-1 font-bold">手动补点</span></button>
+                                    <button onClick={() => setViewMode("delete")} className={`p-3 rounded-xl border-2 transition ${viewMode === "delete" ? "tool-active" : "border-slate-800"}`}><Icon name="mouse-pointer-2" size={18} /><span className="text-[9px] block mt-1 font-bold">点消除</span></button>
+                                    <button onClick={() => setViewMode("delete_area")} className={`p-3 col-span-2 rounded-xl border-2 transition ${viewMode === "delete_area" ? "tool-active" : "border-slate-800"}`}><Icon name="square" size={18} className="mx-auto" /><span className="text-[9px] block mt-1 font-black text-center uppercase tracking-tighter leading-tight">区域批量清除</span></button>
                                 </div>
-
                                 <div className="flex gap-1 bg-black/40 p-1.5 rounded-lg border border-slate-800">
                                     {["Mo", "S2", "S1"].map((t) => (
-                                        <button key={t} onClick={() => setSelectedType(t)} className={`flex-1 py-1 rounded text-[10px] font-bold transition ${selectedType === t ? "bg-blue-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>
-                                            {t}
-                                        </button>
+                                        <button key={t} onClick={() => setSelectedType(t)} className={`flex-1 py-1 rounded text-[10px] font-bold transition ${selectedType === t ? "bg-blue-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}>{t}</button>
                                     ))}
                                 </div>
                             </section>
 
                             <section className="pb-10">
-                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center border-b border-slate-800 pb-2">
-                                    3. 晶粒分域管理
-                                </h2>
-
+                                <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 text-center border-b border-slate-800 pb-2">3. 晶粒分域管理</h2>
                                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1 sidebar-scroll">
                                     {domains.map((d) => (
                                         <div key={d.id} className="flex items-center justify-between p-2 rounded bg-slate-900/50 border border-slate-800 hover:border-blue-500/50 transition">
                                             <span className="text-[10px] font-bold text-slate-400 truncate w-32">{d.name}</span>
                                             <div className="flex gap-1">
-                                                <button onClick={() => enterDomainEdit(d)} className="p-1 text-slate-500 hover:text-blue-400" title="调整位姿">
-                                                    <Icon name="sliders" size={14} />
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        pushHistory();
-                                                        setDomains((prev) => prev.filter((x) => x.id !== d.id));
-                                                    }}
-                                                    className="p-1 text-slate-500 hover:text-red-400"
-                                                >
-                                                    <Icon name="trash-2" size={14} />
-                                                </button>
+                                                <button onClick={() => enterDomainEdit(d)} className="p-1 text-slate-500 hover:text-blue-400" title="调整位姿"><Icon name="sliders" size={14} /></button>
+                                                <button onClick={() => { pushHistory(); setDomains((prev) => prev.filter((x) => x.id !== d.id)); }} className="p-1 text-slate-500 hover:text-red-400"><Icon name="trash-2" size={14} /></button>
                                             </div>
                                         </div>
                                     ))}
@@ -1313,51 +754,22 @@ _atom_site_fract_z
                             {currentTransformTarget && (
                                 <div className="interaction-hint glass-card px-4 py-2 rounded-full border-blue-500/50 flex items-center gap-3 bg-blue-900/40 backdrop-blur-md">
                                     <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                                    <span className="text-[10px] font-black uppercase text-blue-400 tracking-widest leading-none">
-                                        画布左键按住拖拽位姿 / 侧栏拖动条调节旋转与缩放
-                                    </span>
+                                    <span className="text-[10px] font-black uppercase text-blue-400 tracking-widest leading-none">画布左键按住拖拽位姿 / 侧栏拖动条调节旋转与缩放</span>
                                 </div>
                             )}
-
                             <div className="absolute top-6 left-6 z-20 space-y-3 pointer-events-none sticky">
                                 {viewMode === "seed" && (
                                     <div className="bg-yellow-500 text-slate-900 px-4 py-2 rounded-xl text-[11px] font-black shadow-2xl flex items-center gap-4 pointer-events-auto">
-                                        <div className="flex items-center gap-2">
-                                            <Icon name="grid-3x3" size={14} />
-                                            标注种子:
-                                            <span className="underline">{currentSeeds.length}/6</span>
-                                        </div>
-
-                                        <button onClick={performExtrapolation} disabled={currentSeeds.length < 6} className="bg-black text-white px-3 py-1 rounded-lg text-[10px] hover:bg-slate-800 transition shadow font-bold uppercase tracking-tighter">
-                                            执行结构外推
-                                        </button>
-
-                                        {currentSeeds.length > 0 && (
-                                            <button onClick={() => setCurrentSeeds((prev) => prev.slice(0, -1))} className="bg-slate-900 text-white p-1 rounded hover:bg-black transition">
-                                                <Icon name="corner-up-left" size={12} />
-                                            </button>
-                                        )}
+                                        <div className="flex items-center gap-2"><Icon name="grid-3x3" size={14} /> 标注种子: <span className="underline">{currentSeeds.length}/6</span></div>
+                                        <button onClick={performExtrapolation} disabled={currentSeeds.length < 6} className="bg-black text-white px-3 py-1 rounded-lg text-[10px] hover:bg-slate-800 transition shadow font-bold uppercase tracking-tighter">执行结构外推</button>
+                                        {currentSeeds.length > 0 && <button onClick={() => setCurrentSeeds((prev) => prev.slice(0, -1))} className="bg-slate-900 text-white p-1 rounded hover:bg-black transition"><Icon name="corner-up-left" size={12} /></button>}
                                     </div>
                                 )}
                             </div>
-
                             <div className="canvas-wrapper">
                                 {image ? (
                                     <div className="relative shadow-[0_0_150px_rgba(0,0,0,1)] border border-slate-800 bg-slate-950 rounded-sm overflow-hidden">
-                                        <canvas
-                                            ref={canvasRef}
-                                            width={image.width}
-                                            height={image.height}
-                                            onMouseDown={handleMouseDown}
-                                            onMouseMove={handleMouseMove}
-                                            onMouseUp={handleMouseUp}
-                                            onClick={handleCanvasClick}
-                                            style={{
-                                                width: image.width * zoomLevel + "px",
-                                                height: image.height * zoomLevel + "px",
-                                                cursor: currentTransformTarget ? "move" : "crosshair"
-                                            }}
-                                        />
+                                        <canvas ref={canvasRef} width={image.width} height={image.height} onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onClick={handleCanvasClick} style={{ width: image.width * zoomLevel + "px", height: image.height * zoomLevel + "px", cursor: currentTransformTarget ? "move" : "crosshair" }} />
                                     </div>
                                 ) : (
                                     <div className="h-screen w-full flex flex-col items-center justify-center text-slate-700 opacity-20 font-black">
@@ -1368,133 +780,43 @@ _atom_site_fract_z
                             </div>
                         </div>
 
-                        {/* ✦ 新增：浮动缩放控制面板（精确数字输入 + 步进 + 滑块 + 预设 + 标记点大小补偿） */}
                         <div className="zoom-panel">
                             <div className="bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl backdrop-blur p-4 space-y-3 pointer-events-auto">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                                        <Icon name="zoom-in" size={12} />
-                                        STEM 缩放
-                                    </span>
-                                    <button
-                                        onClick={() => setZoomLevel(1.0)}
-                                        className="text-[10px] font-bold text-slate-400 hover:text-white transition"
-                                        title="重置到 100%"
-                                    >
-                                        重置
-                                    </button>
+                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2"><Icon name="zoom-in" size={12} /> STEM 缩放</span>
+                                    <button onClick={() => setZoomLevel(1.0)} className="text-[10px] font-bold text-slate-400 hover:text-white transition" title="重置到 100%">重置</button>
                                 </div>
-
                                 <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setZoomClamped(zoomLevel - 0.05)}
-                                        className="w-8 h-8 rounded bg-slate-800 hover:bg-slate-700 text-white font-black text-sm border border-slate-700 transition"
-                                        title="-5%"
-                                    >
-                                        −
-                                    </button>
-                                    <button
-                                        onClick={() => setZoomClamped(zoomLevel - 0.01)}
-                                        className="w-8 h-8 rounded bg-slate-800/60 hover:bg-slate-700 text-slate-300 font-bold text-[10px] border border-slate-700 transition"
-                                        title="-1%（细调）"
-                                    >
-                                        −1
-                                    </button>
-                                    <input
-                                        type="number"
-                                        min="10"
-                                        max="2000"
-                                        step="1"
-                                        value={zoomInputText}
-                                        onChange={(e) => setZoomInputText(e.target.value)}
-                                        onBlur={handleZoomInputCommit}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                handleZoomInputCommit();
-                                                e.target.blur();
-                                            }
-                                        }}
-                                        className="flex-1 bg-slate-800 text-blue-400 font-mono font-bold text-sm px-2 py-1 rounded text-center border border-slate-700 focus:border-blue-500 outline-none"
-                                    />
+                                    <button onClick={() => setZoomClamped(zoomLevel - 0.05)} className="w-8 h-8 rounded bg-slate-800 hover:bg-slate-700 text-white font-black text-sm border border-slate-700 transition" title="-5%">−</button>
+                                    <button onClick={() => setZoomClamped(zoomLevel - 0.01)} className="w-8 h-8 rounded bg-slate-800/60 hover:bg-slate-700 text-slate-300 font-bold text-[10px] border border-slate-700 transition" title="-1%（细调）">−1</button>
+                                    <input type="number" min="10" max="2000" step="1" value={zoomInputText} onChange={(e) => setZoomInputText(e.target.value)} onBlur={handleZoomInputCommit} onKeyDown={(e) => { if (e.key === "Enter") { handleZoomInputCommit(); e.target.blur(); } }} className="flex-1 bg-slate-800 text-blue-400 font-mono font-bold text-sm px-2 py-1 rounded text-center border border-slate-700 focus:border-blue-500 outline-none" />
                                     <span className="text-xs text-slate-500 font-bold">%</span>
-                                    <button
-                                        onClick={() => setZoomClamped(zoomLevel + 0.01)}
-                                        className="w-8 h-8 rounded bg-slate-800/60 hover:bg-slate-700 text-slate-300 font-bold text-[10px] border border-slate-700 transition"
-                                        title="+1%（细调）"
-                                    >
-                                        +1
-                                    </button>
-                                    <button
-                                        onClick={() => setZoomClamped(zoomLevel + 0.05)}
-                                        className="w-8 h-8 rounded bg-slate-800 hover:bg-slate-700 text-white font-black text-sm border border-slate-700 transition"
-                                        title="+5%"
-                                    >
-                                        +
-                                    </button>
+                                    <button onClick={() => setZoomClamped(zoomLevel + 0.01)} className="w-8 h-8 rounded bg-slate-800/60 hover:bg-slate-700 text-slate-300 font-bold text-[10px] border border-slate-700 transition" title="+1%（细调）">+1</button>
+                                    <button onClick={() => setZoomClamped(zoomLevel + 0.05)} className="w-8 h-8 rounded bg-slate-800 hover:bg-slate-700 text-white font-black text-sm border border-slate-700 transition" title="+5%">+</button>
                                 </div>
-
-                                <input
-                                    type="range"
-                                    min={ZOOM_MIN}
-                                    max={ZOOM_MAX}
-                                    step="0.01"
-                                    value={zoomLevel}
-                                    onChange={(e) => setZoomClamped(parseFloat(e.target.value))}
-                                />
-
+                                <input type="range" min={ZOOM_MIN} max={ZOOM_MAX} step="0.01" value={zoomLevel} onChange={(e) => setZoomClamped(parseFloat(e.target.value))} />
                                 <div className="flex gap-1">
                                     {ZOOM_PRESETS.map((z) => (
-                                        <button
-                                            key={z}
-                                            onClick={() => setZoomLevel(z)}
-                                            className={`flex-1 py-1 rounded text-[9px] font-black transition ${
-                                                Math.abs(zoomLevel - z) < 0.005
-                                                    ? "bg-blue-600 text-white shadow-lg"
-                                                    : "bg-slate-800/70 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
-                                            }`}
-                                        >
-                                            {z * 100}%
-                                        </button>
+                                        <button key={z} onClick={() => setZoomLevel(z)} className={`flex-1 py-1 rounded text-[9px] font-black transition ${Math.abs(zoomLevel - z) < 0.005 ? "bg-blue-600 text-white shadow-lg" : "bg-slate-800/70 text-slate-400 hover:bg-slate-700 hover:text-slate-200"}`}>{z * 100}%</button>
                                     ))}
                                 </div>
-
                                 <div className="border-t border-slate-800 pt-3 space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
-                                            <Icon name="circle-dot" size={12} />
-                                            标记点大小
-                                        </span>
-                                        <span className="text-[10px] font-mono text-emerald-300">
-                                            {(effectiveAtomScale * 100).toFixed(0)}%
-                                        </span>
+                                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2"><Icon name="circle-dot" size={12} /> 标记点大小</span>
+                                        <span className="text-[10px] font-mono text-emerald-300">{(effectiveAtomScale * 100).toFixed(0)}%</span>
+                                    </div>
+                                    
+                                    {/* ✦ 智能状态反馈 UI */}
+                                    <div className="text-[9px] text-emerald-500/80 mb-2 font-bold flex justify-between">
+                                        <span>{smartBaseRadius !== null ? "🤖 智能晶格包裹" : "🤖 需标记2+点测距"}</span>
+                                        <span>{smartBaseRadius !== null ? `${smartBaseRadius.toFixed(1)} px` : ""}</span>
                                     </div>
 
-                                    <input
-                                        type="range"
-                                        min={ATOM_SCALE_MIN}
-                                        max={ATOM_SCALE_MAX}
-                                        step="0.05"
-                                        value={atomScale}
-                                        disabled={autoCompensate}
-                                        onChange={(e) => setAtomScale(parseFloat(e.target.value))}
-                                        style={{ accentColor: autoCompensate ? "#475569" : "#10b981" }}
-                                    />
-
-                                    <button
-                                        onClick={() => setAutoCompensate((prev) => !prev)}
-                                        className={`w-full py-1.5 rounded text-[10px] font-black uppercase tracking-tighter transition border ${
-                                            autoCompensate
-                                                ? "bg-emerald-600/30 text-emerald-300 border-emerald-500"
-                                                : "bg-slate-800/50 text-slate-400 border-slate-700 hover:text-slate-200"
-                                        }`}
-                                        title="开启后，标记点视觉大小不随 STEM 缩放变化"
-                                    >
+                                    <input type="range" min={ATOM_SCALE_MIN} max={ATOM_SCALE_MAX} step="0.05" value={atomScale} disabled={autoCompensate} onChange={(e) => setAtomScale(parseFloat(e.target.value))} style={{ accentColor: autoCompensate ? "#475569" : "#10b981" }} />
+                                    <button onClick={() => setAutoCompensate((prev) => !prev)} className={`w-full py-1.5 rounded text-[10px] font-black uppercase tracking-tighter transition border ${autoCompensate ? "bg-emerald-600/30 text-emerald-300 border-emerald-500" : "bg-slate-800/50 text-slate-400 border-slate-700 hover:text-slate-200"}`} title="开启后，标记点视觉大小不随 STEM 缩放变化">
                                         {autoCompensate ? "✓ 视觉恒定补偿（已启用）" : "启用视觉恒定补偿"}
                                     </button>
-
-                                    <p className="text-[9px] leading-3 text-slate-500 italic">
-                                        放大 STEM 看细节时，标记点像素覆盖范围保持不变。
-                                    </p>
+                                    <p className="text-[9px] leading-3 text-slate-500 italic">如果关闭补偿，点会随图像动态缩放，完美包裹原子中心。</p>
                                 </div>
                             </div>
                         </div>
